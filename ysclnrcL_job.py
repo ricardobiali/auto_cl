@@ -39,18 +39,6 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
         session.findById("wnd[1]/usr/btnDATE_PUSH").press()
 
         # --- Calcula data/hora do agendamento ---
-        # if init_date:
-        #     job_init_datetime = datetime.strptime(init_date, "%d.%m.%Y")
-        # else:
-        #     job_init_datetime = datetime.now()
-
-        # if init_time:
-        #     t = datetime.strptime(init_time, "%H:%M").time()
-        #     job_init_datetime = datetime.combine(job_init_datetime.date(), t)
-        # else:
-        #     job_init_datetime = datetime.now()
-
-        # new_interval += int(interval) if interval else 1
         job_init_datetime = datetime.now() + timedelta(minutes=1)
 
         str_date_plan = job_init_datetime.strftime("%d.%m.%Y")
