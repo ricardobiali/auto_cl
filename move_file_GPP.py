@@ -1,6 +1,8 @@
 import os
 import shutil
 import glob
+import time
+from datetime import datetime
 
 # Nome usuário Windows
 username = os.getlogin()
@@ -12,20 +14,30 @@ destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos
 # Padrão do arquivo a localizar
 padrao = "RGT_RCL.CSV_U33V_JV3A5118530_D__20240101_2024_1T*.txt"
 
-# Monta o caminho completo de busca
-arquivos = glob.glob(os.path.join(origem, padrao))
+# Intervalo entre verificações (em segundos)
+intervalo_busca = 120  # verifica a cada 60 segundos
 
-if not arquivos:
-    print("❌ Nenhum arquivo encontrado com o padrão especificado.")
-else:
-    for arquivo in arquivos:
-        nome_arquivo = os.path.basename(arquivo)
-        destino_final = os.path.join(destino, nome_arquivo)
+print(f"🔍 Iniciando monitoramento da pasta:\n   {origem}")
+print(f"Aguardando arquivo com padrão: {padrao}\n")
 
-        try:
-            shutil.move(arquivo, destino_final)
-            print(f"✅ Arquivo movido com sucesso: {nome_arquivo}")
-            print(f"   ➜ De: {origem}")
-            print(f"   ➜ Para: {destino_final}")
-        except Exception as e:
-            print(f"⚠️ Erro ao mover {nome_arquivo}: {e}")
+while True:
+    arquivos = glob.glob(os.path.join(origem, padrao))
+
+    if arquivos:
+        for arquivo in arquivos:
+            nome_arquivo = os.path.basename(arquivo)
+            destino_final = os.path.join(destino, nome_arquivo)
+            try:
+                shutil.move(arquivo, destino_final)
+                print(f"\n✅ [{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
+                print(f"   ➜ {nome_arquivo}")
+                print(f"   ➜ De: {origem}")
+                print(f"   ➜ Para: {destino_final}")
+                print("\nEncerrando monitoramento.")
+                exit(0)
+            except Exception as e:
+                print(f"⚠️ Erro ao mover {nome_arquivo}: {e}")
+                time.sleep(intervalo_busca)
+    else:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Arquivo ainda não encontrado... tentando novamente em {intervalo_busca} segundos.")
+        time.sleep(intervalo_busca)
