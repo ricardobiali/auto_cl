@@ -16,19 +16,19 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
         print(f"🔹 Processando requisição {i}...")
 
         # --- Preenche campos principais ---
-        session.findById("wnd[0]/usr/ctxtP_BUK_N").text = "1000"
-        session.findById("wnd[0]/usr/txtPC_ANO").text = "2011"
+        session.findById("wnd[0]/usr/ctxtP_BUK_N").text = ""
+        session.findById("wnd[0]/usr/txtPC_ANO").text = "2024"
         session.findById("wnd[0]/usr/cmbTRI").key = "1"
         session.findById("wnd[0]/usr/ctxtPC_CODCB").text = ""
         session.findById("wnd[0]/usr/ctxtPC_FASE").text = "D"
-        session.findById("wnd[0]/usr/ctxtPC_STAT").text = "3"
+        session.findById("wnd[0]/usr/ctxtPC_STAT").text = ""
         session.findById("wnd[0]/usr/ctxtP_VERSAO").text = "2"
         session.findById("wnd[0]/usr/ctxtP_SECAO").text = "ANP_0901"
 
         # --- Abre filtro avançado ---
         session.findById("wnd[0]/tbar[1]/btn[19]").press()
-        session.findById("wnd[0]/usr/ctxtSC_PSPID-LOW").text = req.get("SC_PSPID_LOW", "JV3A03108410")
-        session.findById("wnd[0]/usr/ctxtSD_DTINI-LOW").text = req.get("SD_DTINI_LOW", "01.01.2011")
+        session.findById("wnd[0]/usr/ctxtSC_PSPID-LOW").text = "JV3A5118530"
+        session.findById("wnd[0]/usr/ctxtSD_DTINI-LOW").text = "01.01.2024"
         session.findById("wnd[0]/usr/ctxtPC_BID").text = "002"
 
         session.findById("wnd[0]/usr/chkP_PART").selected = True
@@ -52,15 +52,9 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 
         print(f"✅ Requisição {i} agendada para {str_date_plan} às {str_time_plan}")
 
-        # --- Limpa filtros ---
-        session.findById("wnd[0]/tbar[1]/btn[19]").press()
-        session.findById("wnd[0]/usr/ctxtSC_PSPID-LOW").text = ""
-        session.findById("wnd[0]/usr/ctxtSD_DTINI-LOW").text = ""
-        session.findById("wnd[0]/tbar[1]/btn[20]").press()
-
-    # Fecha a transação
-    session.findById("wnd[0]/tbar[0]/btn[15]").press()
-    print("🔚 Transação YSCLNRCL concluída com sucesso.")
+    # # Fecha a transação
+    # session.findById("wnd[0]/tbar[0]/btn[15]").press()
+    # print("🔚 Transação YSCLNRCL concluída com sucesso.")
 
 
 # ============================================================
@@ -74,7 +68,6 @@ if __name__ == "__main__":
     # Simula dados que seriam lidos de planilha ou banco
     requests_data = [
         {"PC_CODCB": "ABC123", "SC_PSPID_LOW": "JV3A03108410", "SD_DTINI_LOW": "01.01.2011"},
-        {"PC_CODCB": "XYZ789", "SC_PSPID_LOW": "JV3A03108420", "SD_DTINI_LOW": "01.01.2011"},
     ]
 
     create_YSCLBLRIT_requests(
