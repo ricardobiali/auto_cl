@@ -1,16 +1,12 @@
 import os
 import pandas as pd
 
-# Caminho do arquivo original
+# --- Caminhos ---
 arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_U33V_JV3A5118530_D__20240101_2024_1T_20251019_194620.txt"
-
-# Caminho da pasta de destino
 pasta_destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 2 - Arquivos de Excel Reduzidos"
-
-# Criar a pasta de destino se não existir
 os.makedirs(pasta_destino, exist_ok=True)
 
-# Lista de colunas desejadas (índices 1-baseados conforme descrição)
+# --- Colunas desejadas (1-base) ---
 colunas_desejadas = [
     2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 16, 17, 18, 19, 24, 26, 27, 31, 
     33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 49, 51, 52, 53, 
@@ -19,68 +15,40 @@ colunas_desejadas = [
     134, 136, 137, 139, 144, 148, 157, 158, 159, 162, 163, 178, 180, 184, 188, 
     189, 192, 194, 195, 196, 213, 214, 215, 217, 218, 219, 220, 221, 222, 223
 ]
-
-# Converter para índice 0-baseado (pandas usa índice a partir de 0)
 colunas_zero_base = [i - 1 for i in colunas_desejadas]
 
-# Ler o arquivo TXT (assumindo separador ponto e vírgula)
+# --- Ler arquivo ---
 try:
     df = pd.read_csv(arquivo_origem, sep=';', encoding='utf-8', low_memory=False)
 except UnicodeDecodeError:
     df = pd.read_csv(arquivo_origem, sep=';', encoding='latin1', low_memory=False)
 
-# Validar se o número de colunas é suficiente
 if df.shape[1] < max(colunas_zero_base) + 1:
     raise ValueError(f"O arquivo possui apenas {df.shape[1]} colunas — esperado no mínimo {max(colunas_zero_base) + 1}")
 
-# Selecionar apenas as colunas desejadas
 df_reduzido = df.iloc[:, colunas_zero_base]
 
-# --- 🧹 Remover linhas com "X" na coluna "Doc custo Expurgado" ---
+# --- Remover linhas com "X" em Doc custo Expurgado ---
 if "Doc custo Expurgado" in df_reduzido.columns:
     linhas_antes = len(df_reduzido)
     df_reduzido = df_reduzido[df_reduzido["Doc custo Expurgado"].astype(str).str.strip().str.upper() != "X"]
-    linhas_removidas = linhas_antes - len(df_reduzido)
-    print(f"🧹 {linhas_removidas} linhas removidas (Doc custo Expurgado = 'X').")
-else:
-    print("⚠️ Atenção: coluna 'Doc custo Expurgado' não encontrada — nenhuma linha foi removida.")
+    print(f"🧹 {linhas_antes - len(df_reduzido)} linhas removidas (Doc custo Expurgado = 'X').")
 
-# --- 💰 Converter colunas numéricas diretamente para float ---
-colunas_numericas = [
-    "Valor/Moeda obj", 
-    "Valor total em reais", 
-    "Val suj cont loc R$", 
-    "Valor cont local R$", 
-    "Valor/moeda ACC"
-]
-
-def to_float(valor):
-    try:
-        # remover milhar e ajustar separador decimal, se necessário
-        valor = str(valor).replace(",", "")
-        return float(valor)
-    except:
-        return 0.0
+# --- Converter colunas numéricas ---
+colunas_numericas = ["Valor/Moeda obj", "Valor total em reais", "Val suj cont loc R$", "Valor cont local R$", "Valor/moeda ACC"]
 
 for col in colunas_numericas:
     if col in df_reduzido.columns:
-        df_reduzido[col] = df_reduzido[col].apply(to_float)
+        df_reduzido[col] = pd.to_numeric(df_reduzido[col].astype(str).str.replace(",", "").str.strip(), errors='coerce').fillna(0)
 
-# --- ➕ Criar coluna "Estrangeiro $" ---
+# --- Criar coluna Estrangeiro $ ---
 if "Valor cont local R$" in df_reduzido.columns and "Valor/moeda ACC" in df_reduzido.columns:
-    df_reduzido["Estrangeiro $"] = df_reduzido["Valor cont local R$"] - df_reduzido["Valor/moeda ACC"]
-
-    # Inserir logo após a coluna "Valor/moeda ACC"
     idx = df_reduzido.columns.get_loc("Valor/moeda ACC") + 1
-    cols = list(df_reduzido.columns)
-    cols.insert(idx, cols.pop(cols.index("Estrangeiro $")))
-    df_reduzido = df_reduzido[cols]
-else:
-    print("⚠️ Não foi possível criar a coluna 'Estrangeiro $' — colunas base não encontradas.")
+    df_reduzido.insert(idx, "Estrangeiro $", df_reduzido["Valor cont local R$"] - df_reduzido["Valor/moeda ACC"])
 
-# --- 🇧🇷 Formatar números em padrão brasileiro no final ---
+# --- Formatar números em padrão brasileiro ---
 def formata_brasileiro(x):
-    if isinstance(x, (int, float)):
+    if pd.notnull(x):
         return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return x
 
@@ -88,24 +56,50 @@ for col in colunas_numericas + ["Estrangeiro $"]:
     if col in df_reduzido.columns:
         df_reduzido[col] = df_reduzido[col].apply(formata_brasileiro)
 
-# --- 🆕 Adicionar colunas vazias ao final ---
-novas_colunas = [
-    "Tipo de Gasto",
-    "Bem/Serviço",
-    "Gestor do Contrato",
-    "Gerência responsável pelo objeto parceiro",
-    "Disciplina"
-]
-
+# --- Adicionar colunas vazias ---
+novas_colunas = ["Tipo de Gasto", "Bem/Serviço", "Gestor do Contrato", "Gerência responsável pelo objeto parceiro", "Disciplina"]
 for col in novas_colunas:
     df_reduzido[col] = ""
 
-# Gerar nome do novo arquivo reduzido
+# --- Preencher Tipo de Gasto ---
+if "Tipo de Gasto" in df_reduzido.columns:
+    # Garantir colunas de referência
+    for col in ["Protocolo", "Objeto parceiro", "Doc.material"]:
+        if col not in df_reduzido.columns:
+            df_reduzido[col] = None
+
+    protocolo_num = pd.to_numeric(df_reduzido["Protocolo"], errors='coerce').fillna(0)
+    doc_material_num = pd.to_numeric(df_reduzido["Doc.material"], errors='coerce').fillna(0)
+    objeto_parceiro = df_reduzido["Objeto parceiro"].astype(str).str.strip()
+
+    df_reduzido["Tipo de Gasto"] = "Outros"
+    df_reduzido.loc[protocolo_num > 0, "Tipo de Gasto"] = "Direto"
+    df_reduzido.loc[(df_reduzido["Tipo de Gasto"] == "Outros") & (objeto_parceiro == ""), "Tipo de Gasto"] = "Indireto"
+    df_reduzido.loc[(df_reduzido["Tipo de Gasto"] == "Outros") & 
+                    (doc_material_num > 4899999999) & (doc_material_num < 5000000000), "Tipo de Gasto"] = "Estoque"
+
+    print("✅ Coluna 'Tipo de Gasto' preenchida com regras otimizadas.")
+
+# --- Preencher Bem/Serviço ---
+if "Material" in df_reduzido.columns and "Bem/Serviço" in df_reduzido.columns:
+    material_str = df_reduzido["Material"].astype(str).str.strip()
+
+    df_reduzido.loc[
+        material_str.str.match(r"^(50|70|80)"), "Bem/Serviço"
+    ] = "Serviço"
+
+    df_reduzido.loc[
+        material_str.str.match(r"^(10|11|12)"), "Bem/Serviço"
+    ] = "Material"
+
+    print("✅ Coluna 'Bem/Serviço' preenchida conforme prefixos de 'Material'.")
+else:
+    print("⚠️ Coluna 'Material' ou 'Bem/Serviço' não encontrada — nenhuma regra aplicada.")
+
+# --- Salvar arquivo final ---
 nome_base = os.path.basename(arquivo_origem)
 nome_reduzido = nome_base.replace(".txt", "_Reduzida.txt")
 caminho_saida = os.path.join(pasta_destino, nome_reduzido)
 
-# Salvar o novo arquivo
 df_reduzido.to_csv(caminho_saida, sep=';', index=False, encoding='utf-8')
-
 print(f"✅ Arquivo reduzido criado com sucesso!\nDe: {arquivo_origem}\nPara: {caminho_saida}")
