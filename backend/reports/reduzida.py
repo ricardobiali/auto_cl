@@ -1,15 +1,21 @@
+import sys
 import os
+
+# Caminho absoluto até o diretório raiz do projeto
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+from backend.sap_manager.sap_connect import get_sap_free_session, start_sap_manager, start_connection
+
 import time
 import pandas as pd
 import win32com.client
-from sap_manager import get_sap_free_session, start_sap_manager, start_connection
 
 # --- Caminhos ---
 arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_U33V_JV3A5118530_D__20240101_2024_1T_20251019_194620.txt"
 pasta_destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 2 - Arquivos de Excel Reduzidos"
 os.makedirs(pasta_destino, exist_ok=True)
 
-# --- Colunas desejadas (1-base) ---
+# --- Colunas desejadas ---
 colunas_desejadas = [
     2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 16, 17, 18, 19, 24, 26, 27, 31, 
     33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 49, 51, 52, 53, 
@@ -117,6 +123,7 @@ start_connection()
 session = get_sap_free_session()
 time.sleep(2)
 
+# --- Executa transação SAP - Contratos/Gerentes ---
 def executar_ysrelcont(session, contratos_unicos):
     """Executa YSRELCONT no SAP e retorna dict {contrato: gerente}"""
     session.findById("wnd[0]/tbar[0]/okcd").text = "/nYSRELCONT"

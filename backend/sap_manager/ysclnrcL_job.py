@@ -1,4 +1,4 @@
-from sap_manager import get_sap_free_session, start_sap_manager, start_connection, close_sap_manager
+from sap_connect import get_sap_free_session, start_sap_manager, start_connection, close_sap_manager
 from datetime import datetime, timedelta
 import time
 
