@@ -256,12 +256,6 @@ def executar_ko03(session, ordens_or):
             print(f"⚠️ Erro ao buscar {ordem}: {e}")
             continue
 
-    # # Fecha KO03
-    # try:
-    #     session.findById("wnd[0]/tbar[0]/btn[15]").press()
-    # except:
-    #     pass
-
     return or_para_e
 
 
@@ -337,11 +331,6 @@ def executar_ks13(session, objetos_e):
     except Exception as e:
         print(f"⚠️ Erro durante leitura KS13: {e}")
 
-    # try:
-    #     session.findById("wnd[0]/tbar[0]/btn[15]").press()
-    # except:
-    #     pass
-
     return gerencias
 
 
@@ -373,8 +362,6 @@ def mapear_gerencia(obj):
 
 df_reduzido["Gerência responsável pelo objeto parceiro"] = df_reduzido["Objeto parceiro"].apply(mapear_gerencia)
 print("✅ Coluna 'Gerência responsável pelo objeto parceiro' preenchida com sucesso.")
-
-
 # --- Fim do uso do SAP ---
 
 # --- Salvar arquivo final ---
