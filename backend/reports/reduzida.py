@@ -201,8 +201,8 @@ gerentes_por_contrato = executar_ysrelcont(session, contratos_unicos)
 print(f"✅ Consulta SAP concluída. {len(gerentes_por_contrato)} contratos encontrados.")
 
 # --- Preenche coluna Contrato ---
-df_reduzido['Contrato'] = df_reduzido['Contrato'].astype(str).str.strip()
-df_reduzido['Gestor do Contrato'] = df_reduzido['Contrato'].map(gerentes_por_contrato).fillna('')
+contrato_para_map = df_reduzido['Contrato'].astype(str).str.strip()  # apenas temporário
+df_reduzido['Gestor do Contrato'] = contrato_para_map.map(gerentes_por_contrato).fillna('')
 
 # Gerar lista única de objetos válidos (sem alterar o DataFrame)
 objetos_unicos = (
