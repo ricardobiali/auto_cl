@@ -1,14 +1,12 @@
 import sys
 import os
-
-# Caminho absoluto até o diretório raiz do projeto
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
-from backend.sap_manager.sap_connect import get_sap_free_session, start_sap_manager, start_connection
-
 import time
 import pandas as pd
 import win32com.client
+
+# Caminho absoluto até o diretório raiz do projeto
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from backend.sap_manager.sap_connect import get_sap_free_session, start_sap_manager, start_connection
 
 # --- Caminhos ---
 arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_U33V_JV3A5118530_D__20240101_2024_1T_20251019_194620.txt"
@@ -22,7 +20,7 @@ colunas_desejadas = [
     13, 56, 58, 59, 60, 61, 62, 65, 66, 70, 72, 75, 76, 82, 88, 91, 92, 97, 100, 
     102, 103, 106, 114, 115, 116, 117, 118, 119, 120, 122, 123, 124, 128, 129, 
     134, 136, 137, 139, 144, 148, 157, 158, 159, 162, 163, 178, 180, 184, 188, 
-    189, 192, 194, 195, 196, 213, 214, 215, 217, 218, 219, 220, 221, 222, 223
+    189, 192, 194, 195, 196, 213, 214, 215, 217, 218
 ]
 colunas_zero_base = [i - 1 for i in colunas_desejadas]
 
@@ -363,6 +361,99 @@ def mapear_gerencia(obj):
 df_reduzido["Gerência responsável pelo objeto parceiro"] = df_reduzido["Objeto parceiro"].apply(mapear_gerencia)
 print("✅ Coluna 'Gerência responsável pelo objeto parceiro' preenchida com sucesso.")
 # --- Fim do uso do SAP ---
+
+# --- Preencher coluna 'Disciplina' ---
+def aplica_regras_disciplina(df):
+    def preenche_mascara(mascara, valor):
+        df.loc[mascara & (df["Disciplina"] == ""), "Disciplina"] = valor
+
+    # --- Função auxiliar para criar regex ---
+    def prefixos_regex(lista):
+        return "^(" + "|".join([p.replace("*", ".*") for p in lista]) + ")"
+
+    # Dicionários de padrões
+    diret_dict = {
+        "LOEP": ([
+            "LMS*", "US-LOG*", "US-SOEP*", "US-AP*", "LOEP*", "5331541*", "53337*", "53483*", 
+            "53531*", "53670*", "53671*", "536769*", "5367700*", "536771*", "536841*", "53684762", 
+            "53684763", "53684764", "53684765", "53684766", "53687*"
+            ]),
+        "POÇOS": ([
+            "POCOS*", "CPM*", "EP-CPM*", "E&P-CPM*", "EPCPM*", "522*", "5237*", "52380*", 
+            "5239*", "529*", "529008*", "5294*", "5298*", "5309037*", "5309038*", "53090409", 
+            "5309041*", "5309042*", "53090430", "53090431", "53090432", "53090433", "5309045*", 
+            "5309046*", "53176439", "5317644*", "53315420", "53335*", "53485*", "534875*", 
+            "53561*", "53598*", "53626885", "53660*", "536695*", "536744*", "536755*", "536756*", 
+            "53676457", "53676458", "53684768", "53684769", "5370663*", "5370664*", "537585*", 
+            "537586*", "537589*"
+            ]),
+        "SUB": ([
+            "E&P-SERV*", "SUB*", "IPSUB*", "500*", "52382*", "52388*", "5308*", "530902*", "5309047*", 
+            "5309048*", "530905*", "532*", "53315421", "53336*", "534879*", "5355*", "53564*", "53567*", 
+            "53592*", "53626886", "536694*", "536745*", "53679*", "53681*", "5370666*", "5370667*", 
+            "53739*"
+            ]),
+        "SRGE": ([
+            "SH*", "SRGE*", "53535*", "53560*", "5357*", "5361*", "53625*", "536261*", "536262*", 
+            "536757*", "536758*", "5367644*", "53676450", "5367702*", "53682*", "536848*", "53685*", 
+            "53686*", "5369*", "53709*", "5372*", "53734*", "53737*", "53751*", "53756*", "537583*", 
+            "53759*"
+            ]),
+        "EXP": ([
+            "EXP*", "AEXP*", "OEXP*", "508*", "510*", "512*", "52384*", "5309039*", "53090400", 
+            "53090401", "53090402", "53090403", "53090404", "53090405", "53090406", "53090407", 
+            "53090408", "53090434", "53090435", "53090436", "53090437", "53090438", "53090439", 
+            "53176435", "53176436", "53176437", "53176438"
+            ]),
+    }
+
+    # Direto / Outros → coluna Sigla da Gerência
+    for tipo in ["Direto", "Outros"]:
+        mask_tipo = df["Tipo de Gasto"] == tipo
+        for disc, prefixos in diret_dict.items():
+            regex = prefixos_regex(prefixos)
+            preenche_mascara(mask_tipo & df["Sigla da Gerência"].astype(str).str.match(regex, na=False), disc)
+
+    # Indireto
+    indireto = df["Tipo de Gasto"] == "Indireto"
+    indireto_dict = {
+        "LOEP": ["LMS*", "US-LOG*", "US-SOEP*", "US-AP*", "LOEP*"],
+        "POÇOS": ["POCOS*", "CPM*", "EP-CPM*", "E&P-CPM*", "EPCPM*"],
+        "SUB": ["E&P-SERV*", "SUB*", "IPSUB*"],
+        "SRGE": ["SH*", "SRGE*"],
+        "EXP": ["EXP*", "AEXP*", "OEXP*"],
+    }
+    for disc, prefixos in indireto_dict.items():
+        regex = prefixos_regex(prefixos)
+        preenche_mascara(indireto & df["Gerência responsável pelo objeto parceiro"].astype(str).str.match(regex, na=False), disc)
+
+    # Indireto — Objeto parceiro
+    op_dict = {
+        "LOEP": ["E8*", "E9*"],
+        "POÇOS": ["E5*", "E7*", "EI*", "EJ*", "EK*", "E000F41*", "E000F4Y*"],
+        "SUB": ["E4*", "EY*", "EZ*", "E000GMN*"],
+        "SRGE": ["SH*"],
+    }
+    for disc, prefixos in op_dict.items():
+        regex = prefixos_regex(prefixos)
+        preenche_mascara(indireto & df["Objeto parceiro"].astype(str).str.match(regex, na=False), disc)
+
+    # Estoque — Código da unidade
+    estoque = df["Tipo de Gasto"] == "Estoque"
+    estoque_dict = {
+        "POÇOS": ["PP00*", "PP01*", "PP03*", "PP04*", "PP05*", "PP07*", "PP08*", "PP09*"],
+        "SRGE": ["PU01*", "PS01*"],
+        "SUB": ["N100*", "PC01*", "PD00*", "PD03*", "PD04*", "PD05*", "PD08*", "PM04*", "PU03*", "PU43*"],
+    }
+    for disc, prefixos in estoque_dict.items():
+        regex = prefixos_regex(prefixos)
+        preenche_mascara(estoque & df["Código da unidade"].astype(str).str.match(regex, na=False), disc)
+
+    # Preenche demais não contemplados
+    df.loc[df["Disciplina"] == "", "Disciplina"] = "Demais"
+    return df
+
+df_reduzido = aplica_regras_disciplina(df_reduzido)
 
 # --- Salvar arquivo final ---
 nome_base = os.path.basename(arquivo_origem)
