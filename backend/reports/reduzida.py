@@ -4,61 +4,86 @@ import time
 import pandas as pd
 import win32com.client
 
-# Caminho absoluto até o diretório raiz do projeto
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from backend.sap_manager.sap_connect import get_sap_free_session, start_sap_manager, start_connection
 
 # --- Caminhos ---
-arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_U33V_JV3A5118530_D__20240101_2024_1T_20251019_194620.txt"
+arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_XDDI_JV3A5118530_D__20240101_2024_1T_20251019_194620.txt"
 pasta_destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 2 - Arquivos de Excel Reduzidos"
 os.makedirs(pasta_destino, exist_ok=True)
 
-# --- Colunas desejadas ---
-colunas_desejadas = [
-    2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 16, 17, 18, 19, 24, 26, 27, 31, 
-    33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 49, 51, 52, 53, 
-    13, 56, 58, 59, 60, 61, 62, 65, 66, 70, 72, 75, 76, 82, 88, 91, 92, 97, 100, 
-    102, 103, 106, 114, 115, 116, 117, 118, 119, 120, 122, 123, 124, 128, 129, 
-    134, 136, 137, 139, 144, 148, 157, 158, 159, 162, 163, 178, 180, 184, 188, 
-    189, 192, 194, 195, 196, 213, 214, 215, 217, 218
-]
-colunas_zero_base = [i - 1 for i in colunas_desejadas]
-
-# --- Ler arquivo ---
+# --- Lê o arquivo fonte ---
 try:
     df = pd.read_csv(arquivo_origem, sep=';', encoding='utf-8', low_memory=False)
 except UnicodeDecodeError:
     df = pd.read_csv(arquivo_origem, sep=';', encoding='latin1', low_memory=False)
 
-if df.shape[1] < max(colunas_zero_base) + 1:
-    raise ValueError(f"O arquivo possui apenas {df.shape[1]} colunas — esperado no mínimo {max(colunas_zero_base) + 1}")
+# --- Lista de colunas desejadas ---
+colunas_desejadas = [
+    "Identificação DrillD", "Nº documento", "Linha lçto.", "Empresa", "Exercício", "Período",
+    "Trimestre/Ano", "Data lçto.", "Data documento", "Nº doc.referên.", "Denominação", "Txt.cab.doc.",
+    "Def.projeto", "Den. do projeto", "Elemento PEP", "Denominação do PEP", "Objeto", "Atividade Petrobras",
+    "Descrição Ativ", "Cta.contrapart.", "Denom.conta contrap.", "Centro", "Cen.cst.solic.", "Centro de lucro",
+    "Classe de custo", "Tp.doc.", "Desc Classe de Custo", "Valor/Moeda obj", "Moeda do objeto",
+    "Valor total em reais", "Val suj cont loc R$", "Valor cont local R$", "Valor/moeda ACC", "Moeda da ACC",
+    "Moeda transação", "Objeto parceiro", "Denom.obj.parc.", "Material", "Denominação", "Doc.compras",
+    "Trat. Cont. Local", "MIGO", "MIRO", "Perc Cont Local Calc", "Certificado C.L.", "Perc Cont Local Info",
+    "Justificativa %", "Taxa câmbio", "Grp.class.custo", "Doc.de estorno", "Doc.estornado", "Descrição da linha",
+    "Código Regra", "Nat. G. Cal", "Descrição calculada", "Reclassificação", "Fase Consolidada", "Nat. Gast. Cons",
+    "Perc Cont Local Con.", "Descrição con.", "Protocolo", "CNPJ do fornecedor", "Data Doc. Fiscal", "Referência",
+    "Valor Total NF Reais", "Nº NF", "Nº da NF-e", "Doc.material", "It.  Material", "Tipo avaliação",
+    "Código campo/bloco", "Sigla campo/bloco", "Contrato", "Forn. pedido", "Tipo movimento", "Desc. forn. pedido",
+    "Doc custo Expurgado", "Fator Apr.CCs Consol", "Código da unidade", "Tipo de Operação",
+    "Denom.Tp.Operação", "Texto", "Sigla da Gerência", "Doc.faturamento", "Doc.ref.", "Prog Expl Obrig/Mín",
+    "Denominação Obj.", "Status Item/pedido", "EAP Unica", "Ref.estorno", "Visão EAP ÚNICA",
+    "Percent_Rateio_Jaz", "Vl Nacional Atual", "Nome  do Índice", "Mês/ano ref.", "Ft. correção"
+]
 
-df_reduzido = df.iloc[:, colunas_zero_base]
+# --- Verifica colunas existentes ---
+colunas_existentes = [c for c in colunas_desejadas if c in df.columns]
+colunas_faltando = [c for c in colunas_desejadas if c not in df.columns]
 
-# --- Remover linhas com "X" em Doc custo Expurgado ---
+if colunas_faltando:
+    print("⚠️ As seguintes colunas não foram encontradas no arquivo:")
+    for c in colunas_faltando:
+        print("  -", c)
+
+# --- Cria DataFrame reduzido ---
+df_reduzido = df[colunas_existentes].copy()
+
+# --- Remove linhas com 'X' em 'Doc custo Expurgado' ---
 if "Doc custo Expurgado" in df_reduzido.columns:
     linhas_antes = len(df_reduzido)
-    df_reduzido = df_reduzido[df_reduzido["Doc custo Expurgado"].astype(str).str.strip().str.upper() != "X"]
+    df_reduzido = df_reduzido[
+        df_reduzido["Doc custo Expurgado"].astype(str).str.strip().str.upper() != "X"
+    ]
     print(f"🧹 {linhas_antes - len(df_reduzido)} linhas removidas (Doc custo Expurgado = 'X').")
 
-# --- Converter colunas numéricas ---
-colunas_numericas = ["Valor/Moeda obj", "Valor total em reais", "Val suj cont loc R$", "Valor cont local R$", "Valor/moeda ACC"]
+# --- Converter e formatar colunas numéricas no padrão brasileiro ---
+colunas_numericas = [
+    "Valor/Moeda obj",
+    "Valor total em reais",
+    "Val suj cont loc R$",
+    "Valor cont local R$",
+    "Valor/moeda ACC",
+]
 
 for col in colunas_numericas:
     if col in df_reduzido.columns:
         df_reduzido[col] = pd.to_numeric(df_reduzido[col].astype(str).str.replace(",", "").str.strip(), errors='coerce').fillna(0)
 
-# --- Criar coluna Estrangeiro $ ---
+# --- Criar coluna "Estrangeiro $" logo após "Valor/moeda ACC" ---
 if "Valor cont local R$" in df_reduzido.columns and "Valor/moeda ACC" in df_reduzido.columns:
-    idx = df_reduzido.columns.get_loc("Valor/moeda ACC") + 1
-    df_reduzido.insert(idx, "Estrangeiro $", df_reduzido["Valor cont local R$"] - df_reduzido["Valor/moeda ACC"])
+    idx_acc = df_reduzido.columns.get_loc("Valor/moeda ACC") + 1
+    df_reduzido.insert(idx_acc, "Estrangeiro $", df_reduzido["Valor cont local R$"] - df_reduzido["Valor/moeda ACC"])
 
-# --- Formatar números em padrão brasileiro ---
+# --- Função de formatação brasileira ---
 def formata_brasileiro(x):
     if pd.notnull(x):
         return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return x
 
+# --- Aplica formatação ---
 for col in colunas_numericas + ["Estrangeiro $"]:
     if col in df_reduzido.columns:
         df_reduzido[col] = df_reduzido[col].apply(formata_brasileiro)
@@ -129,6 +154,7 @@ contratos_unicos = (
     .dropna()  # remove células vazias
     .astype(str)  # garante que tudo é string
     .str.strip()  # remove espaços em branco
+    .str.replace(r"\.0$", "", regex=True)  # remove .0 no final
 )
 contratos_unicos = [
     c for c in contratos_unicos.unique() if c and c != "*"  # remove "*" e strings vazias
@@ -201,8 +227,8 @@ gerentes_por_contrato = executar_ysrelcont(session, contratos_unicos)
 print(f"✅ Consulta SAP concluída. {len(gerentes_por_contrato)} contratos encontrados.")
 
 # --- Preenche coluna Contrato ---
-contrato_para_map = df_reduzido['Contrato'].astype(str).str.strip()  # apenas temporário
-df_reduzido['Gestor do Contrato'] = contrato_para_map.map(gerentes_por_contrato).fillna('')
+# contrato_para_map = df_reduzido['Contrato'].astype(str).str.strip()  # apenas temporário
+df_reduzido['Gestor do Contrato'] = df['Contrato'].astype(str).str.strip().map(gerentes_por_contrato).fillna('')
 
 # Gerar lista única de objetos válidos (sem alterar o DataFrame)
 objetos_unicos = (
