@@ -97,6 +97,17 @@
             font-size: 0.9rem;
         }
 
+        .fade-toggle {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .fade-toggle.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
         /* Pequena responsividade para telas muito pequenas */
         @media (max-width: 768px) {
             .container { padding: 20px; max-width: 100%; margin: 12px; }
@@ -160,7 +171,7 @@
     </div>
 
     <!-- Tabela de variáveis -->
-    <div class="table-container mb-3">
+    <div class="table-container fade-toggle mb-3">
         <table class="table table-bordered table-hover">
             <thead class="table-light">
                 <tr>
@@ -185,7 +196,7 @@
     </div>
 
     <!-- 📁 Caminhos de Rede -->
-    <div class="form-section">
+    <div class="form-section fade-toggle">
         <h5>Diretórios de armazenamento dos relatórios</h5>
 
         <div class="mb-3">
@@ -238,7 +249,7 @@
     </div>
 
     <!-- 🚀 Botão de Envio -->
-    <div id="runSection" class="mt-4" style="display: none;">
+    <div id="runSection" class="mt-4 fade-toggle" style="display: none;">
         <button id="runBtn" type="button" class="btn btn-primary">
             <i class="fa-solid fa-play me-2"></i>Executar Automação
         </button>
@@ -296,7 +307,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // 📁 Captura das seções
     const tableSection = document.querySelector('.table-container');
     const directoriesSection = document.querySelectorAll('.form-section')[1]; // segunda form-section (diretórios)
+    const runSection = document.getElementById('runSection');
 
+    // pathInputs: pega os contêineres .mb-3 que envolvem cada input
     const pathInputs = {
         path1: document.querySelector('[name="path1"]').closest('.mb-3'),
         path2: document.querySelector('[name="path2"]').closest('.mb-3'),
@@ -306,11 +319,47 @@ document.addEventListener('DOMContentLoaded', function () {
         path6: document.querySelector('[name="path6"]').closest('.mb-3')
     };
 
-    // 🔒 Oculta inicialmente tudo
-    tableSection.style.display = 'none';
-    directoriesSection.style.display = 'none';
-    Object.values(pathInputs).forEach(el => {
-        if (el) el.style.display = 'none';
+    // Garantir que os elementos têm a classe fade-toggle (necessária para a transição)
+    [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
+        if (!el) return;
+        el.classList.add('fade-toggle');
+    });
+
+    // Helper: mostra/oculta com transição (usa CSS .fade-toggle e .show)
+    function toggleFade(element, show) {
+        if (!element) return;
+        const duration = 400; // deve casar com seu transition CSS (0.4s)
+
+        if (show) {
+            // Antes de adicionar .show, precisamos garantir display adequado para que o elemento participe do layout
+            element.style.display = ''; // '' devolve ao default (block/inline conforme o elemento)
+            // Forçar reflow rápido garante que a mudança de display seja aplicada antes de adicionar a classe .show
+            // (ajuda a otimizadores do browser a aplicar transição)
+            void element.offsetWidth;
+            element.classList.add('show');
+        } else {
+            // remove a classe 'show' para iniciar fade out
+            element.classList.remove('show');
+            // após a transição, colocamos display:none para tirar do fluxo
+            setTimeout(() => {
+                // Só aplicar display:none se o elemento ainda não tiver sido reativado
+                if (!element.classList.contains('show')) {
+                    element.style.display = 'none';
+                }
+            }, duration + 20);
+        }
+    }
+
+    // Inicializar estados: esconder tudo sem usar display:none permanente
+    // (ele tem classe fade-toggle, sem 'show' portanto ficará invisível)
+    // Mas queremos garantir que o browser não mostre antes do JS rodar
+    // então definimos display: none temporariamente aqui e o toggleFade fará o show quando necessário.
+    [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
+        if (!el) return;
+        // se já tiver classe show no HTML não alteramos
+        if (!el.classList.contains('show')) {
+            el.style.display = 'none';
+        }
     });
 
     // ⚡ Atualiza visibilidade conforme switches
@@ -322,74 +371,79 @@ document.addEventListener('DOMContentLoaded', function () {
         const s5 = document.getElementById('switch5').checked;
         const s6 = document.getElementById('switch6').checked;
 
-        // Exibir tabela e caminhos de acordo com regras
-        tableSection.style.display = s1 ? 'block' : 'none';
-        pathInputs.path1.style.display = s1 ? 'block' : 'none';
-        pathInputs.path2.style.display = s2 ? 'block' : 'none';
-        pathInputs.path3.style.display = s3 ? 'block' : 'none';
-        pathInputs.path4.style.display = s4 ? 'block' : 'none';
-        pathInputs.path5.style.display = s5 ? 'block' : 'none';
-        pathInputs.path6.style.display = s6 ? 'block' : 'none';
-
-        // 🔄 Exibir a seção inteira de diretórios se qualquer switch estiver ativo
+        // qualquer switch ligado faz a seção de diretórios e botão aparecerem
         const anySwitchOn = s1 || s2 || s3 || s4 || s5 || s6;
-        directoriesSection.style.display = anySwitchOn ? 'block' : 'none';
-    
-        // 🚀 Exibir ou ocultar o botão "Executar Automação"
-        const runSection = document.getElementById('runSection');
-        runSection.style.display = anySwitchOn ? 'block' : 'none';
+
+        // tabela aparece somente se s1 (Solicitação base SAP) estiver ligado
+        toggleFade(tableSection, s1);
+
+        // caminhos individuais
+        toggleFade(pathInputs.path1, s1);
+        toggleFade(pathInputs.path2, s2);
+        toggleFade(pathInputs.path3, s3);
+        toggleFade(pathInputs.path4, s4);
+        toggleFade(pathInputs.path5, s5);
+        toggleFade(pathInputs.path6, s6);
+
+        // seção de diretórios e botão aparecem se qualquer switch estiver ativo
+        toggleFade(directoriesSection, anySwitchOn);
+        toggleFade(runSection, anySwitchOn);
     }
 
     // 🪄 Listeners nos switches
     for (let i = 1; i <= 6; i++) {
-        document.getElementById(`switch${i}`).addEventListener('change', updateVisibility);
+        const sw = document.getElementById(`switch${i}`);
+        if (sw) sw.addEventListener('change', updateVisibility);
     }
 
     // ⚙️ Lógica do botão "Executar Automação"
-    document.getElementById('runBtn').addEventListener('click', function () {
-        const data = [];
-        for (let i = 1; i <= rows; i++) {
-            const rowObj = {
-                empresa: document.querySelector(`[name="empresa_${i}"]`).value.trim(),
-                exercicio: document.querySelector(`[name="exercicio_${i}"]`).value.trim(),
-                trimestre: document.querySelector(`[name="trimestre_${i}"]`).value.trim(),
-                campo: document.querySelector(`[name="campo_${i}"]`).value.trim(),
-                fase: document.querySelector(`[name="fase_${i}"]`).value.trim(),
-                status: document.querySelector(`[name="status_${i}"]`).value.trim(),
-                versao: document.querySelector(`[name="versao_${i}"]`).value.trim(),
-                secao: document.querySelector(`[name="secao_${i}"]`).value.trim(),
-                defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
-                datainicio: document.querySelector(`[name="datainicio_${i}"]`).value,
-                bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
+    const runBtn = document.getElementById('runBtn');
+    if (runBtn) {
+        runBtn.addEventListener('click', function () {
+            const data = [];
+            for (let i = 1; i <= rows; i++) {
+                const rowObj = {
+                    empresa: document.querySelector(`[name="empresa_${i}"]`).value.trim(),
+                    exercicio: document.querySelector(`[name="exercicio_${i}"]`).value.trim(),
+                    trimestre: document.querySelector(`[name="trimestre_${i}"]`).value.trim(),
+                    campo: document.querySelector(`[name="campo_${i}"]`).value.trim(),
+                    fase: document.querySelector(`[name="fase_${i}"]`).value.trim(),
+                    status: document.querySelector(`[name="status_${i}"]`).value.trim(),
+                    versao: document.querySelector(`[name="versao_${i}"]`).value.trim(),
+                    secao: document.querySelector(`[name="secao_${i}"]`).value.trim(),
+                    defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
+                    datainicio: document.querySelector(`[name="datainicio_${i}"]`).value,
+                    bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
+                };
+                data.push(rowObj);
+            }
+
+            const paths = {
+                path1: document.querySelector('[name="path1"]').value.trim(),
+                path2: document.querySelector('[name="path2"]').value.trim(),
+                path3: document.querySelector('[name="path3"]').value.trim(),
+                path4: document.querySelector('[name="path4"]').value.trim(),
+                path5: document.querySelector('[name="path5"]').value.trim(),
+                path6: document.querySelector('[name="path6"]').value.trim()
             };
-            data.push(rowObj);
-        }
 
-        const paths = {
-            path1: document.querySelector('[name="path1"]').value.trim(),
-            path2: document.querySelector('[name="path2"]').value.trim(),
-            path3: document.querySelector('[name="path3"]').value.trim(),
-            path4: document.querySelector('[name="path4"]').value.trim(),
-            path5: document.querySelector('[name="path5"]').value.trim(),
-            path6: document.querySelector('[name="path6"]').value.trim()
-        };
+            const switches = {
+                relatorios: document.getElementById('switch1').checked,
+                graficos: document.getElementById('switch2').checked,
+                excel: document.getElementById('switch3').checked,
+                email: document.getElementById('switch4').checked,
+                backup: document.getElementById('switch5').checked,
+                modoRapido: document.getElementById('switch6').checked
+            };
 
-        const switches = {
-            relatorios: document.getElementById('switch1').checked,
-            graficos: document.getElementById('switch2').checked,
-            excel: document.getElementById('switch3').checked,
-            email: document.getElementById('switch4').checked,
-            backup: document.getElementById('switch5').checked,
-            modoRapido: document.getElementById('switch6').checked
-        };
+            console.log('Linhas:', data);
+            console.log('Paths:', paths);
+            console.log('Opções selecionadas:', switches);
+            alert('Dados coletados no console (verifique) — integração com backend a seguir.');
+        });
+    }
 
-        console.log('Linhas:', data);
-        console.log('Paths:', paths);
-        console.log('Opções selecionadas:', switches);
-        alert('Dados coletados no console (verifique) — integração com backend a seguir.');
-    });
-
-    // Inicializa oculto
+    // Inicializa oculto/visível conforme estado atual dos switches
     updateVisibility();
 });
 </script>
