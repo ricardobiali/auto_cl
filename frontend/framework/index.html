@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Automação SAP - Reduzida</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 950px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.1);
+            padding: 30px 40px;
+            margin-top: 40px;
+        }
+        .header-image img {
+            position: relative;
+            left: 50%;
+            transform: translateX(-50%);
+            top: -30px;
+            width: 109.5%;
+            height: auto;
+            border-radius: 15px;
+        }
+        .form-check.form-switch {
+            padding-left: 2.5em;
+        }
+
+        .form-check-input {
+            background-color: #ccc;
+            border-color: #bbb;
+        }
+
+        .form-check-input:checked {
+            background-color: #008542;
+            border-color: #008542;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            width: 101%;
+            margin: 0 auto;
+        }
+        .table {
+            font-size: 0.8rem; 
+            border-collapse: collapse;
+        }
+        table input {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 0.8rem;
+            padding: 2px 4px;
+            line-height: 1;
+            height: auto;
+        }
+        .table tbody tr {
+            line-height: 0.9;
+        }
+        th, td {
+            vertical-align: middle;
+            text-align: center;
+            padding: 4px 6px;   
+            font-size: 0.85rem;
+        }
+        .table th, 
+        .table td {
+            padding: 2px 4px;       
+            text-align: center;
+            vertical-align: middle;
+        }
+        .table tbody tr {
+            line-height: 1;
+        }
+
+        .form-section {
+            border-left: 4px solid #008542;
+            padding-left: 16px;
+            margin-top: 25px;
+            margin-bottom: 20px;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            background-color: #008542;
+            border-color: #00703a;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* Pequena responsividade para telas muito pequenas */
+        @media (max-width: 768px) {
+            .container { padding: 20px; max-width: 100%; margin: 12px; }
+            .header-image img { width: 120%; top: -10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-image">
+        <img src="../media/header.png" alt="Cabeçalho">
+    </div>
+
+    <div class="d-flex align-items-center justify-content-center mb-4">
+        <img src="../media/logo_br.jpg" alt="Logo Petrobras" style="height: 45px; margin-right: 30px;">
+        <h2 class="text-center mb-4">Pré-Auditoria de Conteúdo Local</h2>
+    </div>
+
+    <!-- ⚙️ Opções de Configuração -->
+    <div class="form-section">
+        <h5>Opções de Configuração</h5>
+        <div class="row row-cols-2 g-3 mt-2">
+            <div class="col">
+                <div class="d-flex flex-column gap-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="switch1">
+                        <label class="form-check-label" for="switch1">Solicitação na base do SAP</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="switch2">
+                        <label class="form-check-label" for="switch2">Reporte Completo</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="switch3">
+                        <label class="form-check-label" for="switch3">Reporte Reduzido</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="d-flex flex-column gap-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="switch4">
+                        <label class="form-check-label" for="switch4">Gastos Diretos</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="switch5">
+                        <label class="form-check-label" for="switch5">Gastos Indiretos</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="switch6">
+                        <label class="form-check-label" for="switch6">Estoques</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de variáveis -->
+    <div class="table-container mb-3">
+        <table class="table table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:36px">#</th>
+                    <th>Empresa</th>
+                    <th>Exercício</th>
+                    <th>Trimestre</th>
+                    <th>Campo/Bloco</th>
+                    <th>Fase</th>
+                    <th>Status</th>
+                    <th>Versão</th>
+                    <th>Seção.Expurgo</th>
+                    <th>Def.Projeto</th>
+                    <th>Data Início</th>
+                    <th>Bidround proposto</th>
+                </tr>
+            </thead>
+            <tbody id="rows-body">
+                <!-- Linhas geradas via JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 📁 Caminhos de Rede -->
+    <div class="form-section">
+        <h5>Diretórios de armazenamento dos relatórios</h5>
+
+        <div class="mb-3">
+            <label class="form-label">Diretório 1</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                <input type="text" class="form-control" name="path1" placeholder="C:\Users\...">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Diretório 2</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                <input type="text" class="form-control" name="path2" placeholder="C:\Users\...">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Diretório 3</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                <input type="text" class="form-control" name="path3" placeholder="C:\Users\...">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Diretório 4</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                <input type="text" class="form-control" name="path4" placeholder="C:\Users\...">
+            </div>
+        </div>
+    </div>
+
+    <!-- 🚀 Botão de Envio -->
+    <div class="mt-4">
+        <button id="runBtn" type="button" class="btn btn-primary">
+            <i class="fa-solid fa-play me-2"></i>Executar Automação
+        </button>
+    </div>
+
+    <footer>
+        <p class="mt-4 mb-0">© v.1 2025 Automação Petrobras | Desenvolvido por Ricardo Biali - U33V</p>
+    </footer>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tbody = document.getElementById('rows-body');
+    const rows = 20;
+
+    for (let i = 1; i <= rows; i++) {
+        const tr = document.createElement('tr');
+
+        // Coluna número
+        const tdIndex = document.createElement('td');
+        tdIndex.textContent = i;
+        tr.appendChild(tdIndex);
+
+        // Helper para criar td+input
+        function tdInput(type, name) {
+            const td = document.createElement('td');
+            const input = document.createElement('input');
+            input.className = 'form-control';
+            input.name = name;
+            input.type = type || 'text';
+            td.appendChild(input);
+            return td;
+        }
+
+        tr.appendChild(tdInput('text', `empresa_${i}`));
+        tr.appendChild(tdInput('text', `exercicio_${i}`));
+        tr.appendChild(tdInput('text', `trimestre_${i}`));
+        tr.appendChild(tdInput('text', `campo_${i}`));
+        tr.appendChild(tdInput('text', `fase_${i}`));
+        tr.appendChild(tdInput('text', `status_${i}`));
+        tr.appendChild(tdInput('text', `versao_${i}`));
+        tr.appendChild(tdInput('text', `secao_${i}`));
+        tr.appendChild(tdInput('text', `defprojeto_${i}`));
+
+        // Data input
+        const tdDate = document.createElement('td');
+        const dateInput = document.createElement('input');
+        dateInput.className = 'form-control';
+        dateInput.name = `datainicio_${i}`;
+        dateInput.type = 'date';
+        tdDate.appendChild(dateInput);
+        tr.appendChild(tdDate);
+
+        tr.appendChild(tdInput('text', `bidround_${i}`));
+
+        tbody.appendChild(tr);
+    }
+
+    // Exemplo: listener para botão executar
+    document.getElementById('runBtn').addEventListener('click', function () {
+        // Aqui você pode colher os dados da tabela e enviar via fetch / electron / python bridge etc.
+        // Exemplo simples: montar um array com as linhas preenchidas
+        const data = [];
+        for (let i = 1; i <= rows; i++) {
+            const rowObj = {
+                empresa: document.querySelector(`[name="empresa_${i}"]`).value.trim(),
+                exercicio: document.querySelector(`[name="exercicio_${i}"]`).value.trim(),
+                trimestre: document.querySelector(`[name="trimestre_${i}"]`).value.trim(),
+                campo: document.querySelector(`[name="campo_${i}"]`).value.trim(),
+                fase: document.querySelector(`[name="fase_${i}"]`).value.trim(),
+                status: document.querySelector(`[name="status_${i}"]`).value.trim(),
+                versao: document.querySelector(`[name="versao_${i}"]`).value.trim(),
+                secao: document.querySelector(`[name="secao_${i}"]`).value.trim(),
+                defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
+                datainicio: document.querySelector(`[name="datainicio_${i}"]`).value,
+                bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
+            };
+            data.push(rowObj);
+        }
+
+        // Diretórios
+        const paths = {
+            path1: document.querySelector('[name="path1"]').value.trim(),
+            path2: document.querySelector('[name="path2"]').value.trim(),
+            path3: document.querySelector('[name="path3"]').value.trim(),
+            path4: document.querySelector('[name="path4"]').value.trim()
+        };
+        
+    // ✅ Captura dos switches
+    const switches = {
+        relatorios: document.getElementById('switch1').checked,
+        graficos: document.getElementById('switch2').checked,
+        excel: document.getElementById('switch3').checked,
+        email: document.getElementById('switch4').checked,
+        backup: document.getElementById('switch5').checked,
+        modoRapido: document.getElementById('switch6').checked
+    };
+
+    console.log('Linhas:', data);
+    console.log('Paths:', paths);
+    console.log('Opções selecionadas:', switches);
+        // TODO: enviar os dados ao backend (ex: via fetch para um servidor local, ou usar Electron/pywebview)
+        alert('Dados coletados no console (verifique) — agora integre com seu backend.');
+    });
+
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
