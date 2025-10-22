@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from backend.sap_manager.sap_connect import get_sap_free_session, start_sap_manager, start_connection
 
 # --- Caminhos ---
-arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_XDDI_JV3A5118530_D__20240101_2024_1T_20251019_194620.txt"
+arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt"
 pasta_destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 2 - Arquivos de Excel Reduzidos"
 os.makedirs(pasta_destino, exist_ok=True)
 
@@ -227,8 +227,14 @@ gerentes_por_contrato = executar_ysrelcont(session, contratos_unicos)
 print(f"✅ Consulta SAP concluída. {len(gerentes_por_contrato)} contratos encontrados.")
 
 # --- Preenche coluna Contrato ---
-# contrato_para_map = df_reduzido['Contrato'].astype(str).str.strip()  # apenas temporário
-df_reduzido['Gestor do Contrato'] = df['Contrato'].astype(str).str.strip().map(gerentes_por_contrato).fillna('')
+df_reduzido['Gestor do Contrato'] = (
+    df_reduzido['Contrato']
+    .astype(str)
+    .str.strip()
+    .str.replace(r"\.0$", "", regex=True)  # remove .0 caso exista
+    .map(gerentes_por_contrato)
+    .fillna('')
+)
 
 # Gerar lista única de objetos válidos (sem alterar o DataFrame)
 objetos_unicos = (
@@ -254,7 +260,6 @@ def executar_ko03(session, ordens_or):
     session.findById("wnd[0]/tbar[0]/okcd").text = "/nKO03"
     session.findById("wnd[0]").sendVKey(0)
     time.sleep(1)
-    # session.findById("wnd[0]").maximize()
 
     or_para_e = {}
 
@@ -281,7 +286,6 @@ def executar_ko03(session, ordens_or):
             continue
 
     return or_para_e
-
 
 # --- KS13 - Buscar Gerência Responsável ---
 def executar_ks13(session, objetos_e):
@@ -356,7 +360,6 @@ def executar_ks13(session, objetos_e):
         print(f"⚠️ Erro durante leitura KS13: {e}")
 
     return gerencias
-
 
 # --- Execução KO03 + KS13 ---
 print("🚀 Executando KO03 (ordens OR → centros E)...")
