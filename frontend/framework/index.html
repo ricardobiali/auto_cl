@@ -108,13 +108,17 @@
 
 <div class="container">
     <div class="header-image">
-        <img src="../media/header.png" alt="Cabeçalho">
+        <img src="./media/header.png" alt="Cabeçalho">
     </div>
 
     <div class="d-flex align-items-center justify-content-center mb-4">
-        <img src="../media/logo_br.jpg" alt="Logo Petrobras" style="height: 45px; margin-right: 30px;">
+        <img src="./media/logo_br.jpg" alt="Logo Petrobras" style="height: 45px; margin-right: 30px;">
         <h2 class="text-center mb-4">Pré-Auditoria de Conteúdo Local</h2>
     </div>
+    <div>
+        <p class="mb-0" style="text-align: left; font-weight: bold;">Seja bem-vindo</p>
+    </div>
+
 
     <!-- ⚙️ Opções de Configuração -->
     <div class="form-section">
@@ -185,7 +189,7 @@
         <h5>Diretórios de armazenamento dos relatórios</h5>
 
         <div class="mb-3">
-            <label class="form-label">Diretório 1</label>
+            <label class="form-label">Diretório de armazenamento - Base SAP</label>
             <div class="input-group">
                 <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
                 <input type="text" class="form-control" name="path1" placeholder="C:\Users\...">
@@ -193,7 +197,7 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Diretório 2</label>
+            <label class="form-label">Diretório de armazenamento - Reporte Completo</label>
             <div class="input-group">
                 <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
                 <input type="text" class="form-control" name="path2" placeholder="C:\Users\...">
@@ -201,7 +205,7 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Diretório 3</label>
+            <label class="form-label">Diretório de armazenamento - Reporte Reduzido</label>
             <div class="input-group">
                 <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
                 <input type="text" class="form-control" name="path3" placeholder="C:\Users\...">
@@ -209,16 +213,32 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Diretório 4</label>
+            <label class="form-label">Diretório de armazenamento - Gastos Diretos</label>
             <div class="input-group">
                 <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
                 <input type="text" class="form-control" name="path4" placeholder="C:\Users\...">
             </div>
         </div>
+
+        <div class="mb-3">
+            <label class="form-label">Diretório de armazenamento - Gastos Indiretos</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                <input type="text" class="form-control" name="path5" placeholder="C:\Users\...">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Diretório de armazenamento - Estoques</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                <input type="text" class="form-control" name="path6" placeholder="C:\Users\...">
+            </div>
+        </div>
     </div>
 
     <!-- 🚀 Botão de Envio -->
-    <div class="mt-4">
+    <div id="runSection" class="mt-4" style="display: none;">
         <button id="runBtn" type="button" class="btn btn-primary">
             <i class="fa-solid fa-play me-2"></i>Executar Automação
         </button>
@@ -234,15 +254,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const tbody = document.getElementById('rows-body');
     const rows = 20;
 
+    // 🧱 Cria a tabela dinamicamente
     for (let i = 1; i <= rows; i++) {
         const tr = document.createElement('tr');
-
-        // Coluna número
         const tdIndex = document.createElement('td');
         tdIndex.textContent = i;
         tr.appendChild(tdIndex);
 
-        // Helper para criar td+input
         function tdInput(type, name) {
             const td = document.createElement('td');
             const input = document.createElement('input');
@@ -263,7 +281,6 @@ document.addEventListener('DOMContentLoaded', function () {
         tr.appendChild(tdInput('text', `secao_${i}`));
         tr.appendChild(tdInput('text', `defprojeto_${i}`));
 
-        // Data input
         const tdDate = document.createElement('td');
         const dateInput = document.createElement('input');
         dateInput.className = 'form-control';
@@ -273,14 +290,63 @@ document.addEventListener('DOMContentLoaded', function () {
         tr.appendChild(tdDate);
 
         tr.appendChild(tdInput('text', `bidround_${i}`));
-
         tbody.appendChild(tr);
     }
 
-    // Exemplo: listener para botão executar
+    // 📁 Captura das seções
+    const tableSection = document.querySelector('.table-container');
+    const directoriesSection = document.querySelectorAll('.form-section')[1]; // segunda form-section (diretórios)
+
+    const pathInputs = {
+        path1: document.querySelector('[name="path1"]').closest('.mb-3'),
+        path2: document.querySelector('[name="path2"]').closest('.mb-3'),
+        path3: document.querySelector('[name="path3"]').closest('.mb-3'),
+        path4: document.querySelector('[name="path4"]').closest('.mb-3'),
+        path5: document.querySelector('[name="path5"]').closest('.mb-3'),
+        path6: document.querySelector('[name="path6"]').closest('.mb-3')
+    };
+
+    // 🔒 Oculta inicialmente tudo
+    tableSection.style.display = 'none';
+    directoriesSection.style.display = 'none';
+    Object.values(pathInputs).forEach(el => {
+        if (el) el.style.display = 'none';
+    });
+
+    // ⚡ Atualiza visibilidade conforme switches
+    function updateVisibility() {
+        const s1 = document.getElementById('switch1').checked;
+        const s2 = document.getElementById('switch2').checked;
+        const s3 = document.getElementById('switch3').checked;
+        const s4 = document.getElementById('switch4').checked;
+        const s5 = document.getElementById('switch5').checked;
+        const s6 = document.getElementById('switch6').checked;
+
+        // Exibir tabela e caminhos de acordo com regras
+        tableSection.style.display = s1 ? 'block' : 'none';
+        pathInputs.path1.style.display = s1 ? 'block' : 'none';
+        pathInputs.path2.style.display = s2 ? 'block' : 'none';
+        pathInputs.path3.style.display = s3 ? 'block' : 'none';
+        pathInputs.path4.style.display = s4 ? 'block' : 'none';
+        pathInputs.path5.style.display = s5 ? 'block' : 'none';
+        pathInputs.path6.style.display = s6 ? 'block' : 'none';
+
+        // 🔄 Exibir a seção inteira de diretórios se qualquer switch estiver ativo
+        const anySwitchOn = s1 || s2 || s3 || s4 || s5 || s6;
+        directoriesSection.style.display = anySwitchOn ? 'block' : 'none';
+    
+        // 🚀 Exibir ou ocultar o botão "Executar Automação"
+        const runSection = document.getElementById('runSection');
+        runSection.style.display = anySwitchOn ? 'block' : 'none';
+    }
+
+    // 🪄 Listeners nos switches
+    for (let i = 1; i <= 6; i++) {
+        document.getElementById(`switch${i}`).addEventListener('change', updateVisibility);
+    }
+
+    // ⚙️ Lógica do botão "Executar Automação"
     document.getElementById('runBtn').addEventListener('click', function () {
-        // Aqui você pode colher os dados da tabela e enviar via fetch / electron / python bridge etc.
-        // Exemplo simples: montar um array com as linhas preenchidas
         const data = [];
         for (let i = 1; i <= rows; i++) {
             const rowObj = {
@@ -299,31 +365,32 @@ document.addEventListener('DOMContentLoaded', function () {
             data.push(rowObj);
         }
 
-        // Diretórios
         const paths = {
             path1: document.querySelector('[name="path1"]').value.trim(),
             path2: document.querySelector('[name="path2"]').value.trim(),
             path3: document.querySelector('[name="path3"]').value.trim(),
-            path4: document.querySelector('[name="path4"]').value.trim()
+            path4: document.querySelector('[name="path4"]').value.trim(),
+            path5: document.querySelector('[name="path5"]').value.trim(),
+            path6: document.querySelector('[name="path6"]').value.trim()
         };
-        
-    // ✅ Captura dos switches
-    const switches = {
-        relatorios: document.getElementById('switch1').checked,
-        graficos: document.getElementById('switch2').checked,
-        excel: document.getElementById('switch3').checked,
-        email: document.getElementById('switch4').checked,
-        backup: document.getElementById('switch5').checked,
-        modoRapido: document.getElementById('switch6').checked
-    };
 
-    console.log('Linhas:', data);
-    console.log('Paths:', paths);
-    console.log('Opções selecionadas:', switches);
-        // TODO: enviar os dados ao backend (ex: via fetch para um servidor local, ou usar Electron/pywebview)
-        alert('Dados coletados no console (verifique) — agora integre com seu backend.');
+        const switches = {
+            relatorios: document.getElementById('switch1').checked,
+            graficos: document.getElementById('switch2').checked,
+            excel: document.getElementById('switch3').checked,
+            email: document.getElementById('switch4').checked,
+            backup: document.getElementById('switch5').checked,
+            modoRapido: document.getElementById('switch6').checked
+        };
+
+        console.log('Linhas:', data);
+        console.log('Paths:', paths);
+        console.log('Opções selecionadas:', switches);
+        alert('Dados coletados no console (verifique) — integração com backend a seguir.');
     });
 
+    // Inicializa oculto
+    updateVisibility();
 });
 </script>
 

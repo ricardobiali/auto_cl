@@ -8,8 +8,8 @@ from datetime import datetime
 username = os.getlogin()
 
 # Caminhos de origem e destino
-origem = r"C:\Users\U33V\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
-destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP"
+origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
+destino = fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP"
 
 # Padrão do arquivo a localizar
 padrao = "RGT_RCL.CSV_U33V_JV3A5118530_D__20240101_2024_1T*.txt"
