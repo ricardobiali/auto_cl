@@ -1,6 +1,7 @@
 from sap_connect import get_sap_free_session, start_sap_manager, start_connection, close_sap_manager
 from datetime import datetime, timedelta
-import time
+import subprocess
+import os
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
     """
@@ -9,8 +10,6 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 
     session.findById("wnd[0]/tbar[0]/okcd").text = "/nYSCLNRCL"
     session.findById("wnd[0]").sendVKey(0)
-
-    new_interval = 0
 
     for i, req in enumerate(requests_data, start=1):
         print(f"🔹 Processando requisição {i}...")
@@ -52,11 +51,6 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 
         print(f"✅ Requisição {i} agendada para {str_date_plan} às {str_time_plan}")
 
-    # # Fecha a transação
-    # session.findById("wnd[0]/tbar[0]/btn[15]").press()
-    # print("🔚 Transação YSCLNRCL concluída com sucesso.")
-
-
 # ============================================================
 # Execução principal
 # ============================================================
@@ -78,4 +72,6 @@ if __name__ == "__main__":
         requests_data=requests_data
     )
 
-    # close_sap_manager(started_by_script)  # opcional, se quiser fechar ao fim
+# Caminho absoluto ou relativo
+reports_path = os.path.join(os.path.dirname(__file__), "..", "reports", "completa.py")
+subprocess.run(["python", reports_path], check=True)

@@ -350,10 +350,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Inicializar estados: esconder tudo sem usar display:none permanente
-    // (ele tem classe fade-toggle, sem 'show' portanto ficará invisível)
-    // Mas queremos garantir que o browser não mostre antes do JS rodar
-    // então definimos display: none temporariamente aqui e o toggleFade fará o show quando necessário.
     [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
         if (!el) return;
         // se já tiver classe show no HTML não alteramos
