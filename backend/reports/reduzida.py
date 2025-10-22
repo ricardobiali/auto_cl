@@ -7,8 +7,12 @@ import win32com.client
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from backend.sap_manager.sap_connect import get_sap_free_session, start_sap_manager, start_connection
 
+from backend.sap_manager.ysrelcont import executar_ysrelcont
+from backend.sap_manager.ko03 import executar_ko03
+from backend.sap_manager.ks13 import executar_ks13
+
 # --- Caminhos ---
-arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt"
+arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_UPWY_DP{JC3A2918927}_20244T_0_20250428162636.txt"
 pasta_destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 2 - Arquivos de Excel Reduzidos"
 os.makedirs(pasta_destino, exist_ok=True)
 
@@ -168,60 +172,6 @@ session = get_sap_free_session()
 time.sleep(2)
 
 # --- Executa transação SAP - Contratos/Gerentes ---
-def executar_ysrelcont(session, contratos_unicos):
-    """Executa YSRELCONT no SAP e retorna dict {contrato: gerente}"""
-    session.findById("wnd[0]/tbar[0]/okcd").text = "/nYSRELCONT"
-    session.findById("wnd[0]").sendVKey(0)
-    time.sleep(1)
-
-    gerentes = {}
-    contr_types = ["ZCVR", "ZCVM"]
-
-    for contr_type in contr_types:
-        session.findById("wnd[0]/usr/ctxtSC_BSART-LOW").text = contr_type
-        session.findById("wnd[0]/usr/ctxtSC_EKORG-LOW").text = "0001"
-        session.findById("wnd[0]/usr/ctxtSC_EKORG-HIGH").text = "9999"
-
-        # Abre seleção de contratos
-        session.findById("wnd[0]/usr/btn%_SC_EBELN_%_APP_%-VALU_PUSH").press()
-        session.findById("wnd[1]/usr/tabsTAB_STRIP/tabpSIVA").select()
-        session.findById("wnd[1]/tbar[0]/btn[16]").press()
-
-        for contrato in contratos_unicos:
-            campo = (
-                "wnd[1]/usr/tabsTAB_STRIP/tabpSIVA/"
-                "ssubSCREEN_HEADER:SAPLALDB:3010/tblSAPLALDBSINGLE/"
-                "ctxtRSCSEL_255-SLOW_I[1,0]"
-            )
-            session.findById(campo).text = contrato
-            session.findById("wnd[1]/tbar[0]/btn[13]").press()
-
-        session.findById("wnd[1]/tbar[0]/btn[8]").press()
-        time.sleep(1)
-        session.findById("wnd[0]/tbar[1]/btn[8]").press()
-        time.sleep(2)
-
-        # Verifica se há popup de “sem resultados”
-        try:
-            info_popup = session.findById("wnd[1]", False)
-            if info_popup:
-                session.findById("wnd[1]/tbar[0]/btn[0]").press()
-                continue
-        except:
-            pass
-
-        table = session.findById("wnd[0]/usr/cntlGRID1/shellcont/shell")
-        for r in range(table.rowCount):
-            contrato = table.getCellValue(r, "EBELN").strip()
-            gerente = table.getCellValue(r, "GERENTE").strip()
-            if contrato not in gerentes:
-                gerentes[contrato] = gerente
-
-        session.findById("wnd[0]/tbar[0]/btn[3]").press()
-        time.sleep(1)
-
-    return gerentes
-
 print("🔍 Executando consulta YSRELCONT...")
 gerentes_por_contrato = executar_ysrelcont(session, contratos_unicos)
 print(f"✅ Consulta SAP concluída. {len(gerentes_por_contrato)} contratos encontrados.")
@@ -250,116 +200,6 @@ objetos_unicos = [
 # --- Separa por tipo ---
 objetos_e = [o for o in objetos_unicos if o.startswith("E")]
 objetos_or = [o for o in objetos_unicos if o.startswith("OR")]
-
-# --- KO03 - Encontrar centro de custo correspondente a cada OR ---
-def executar_ko03(session, ordens_or):
-    """Executa KO03 e retorna dict {ORxxxxx: Exxxxx}"""
-    if not ordens_or:
-        return {}
-
-    session.findById("wnd[0]/tbar[0]/okcd").text = "/nKO03"
-    session.findById("wnd[0]").sendVKey(0)
-    time.sleep(1)
-
-    or_para_e = {}
-
-    for ordem in ordens_or:
-        try:
-            ordem_num = ordem.replace("OR", "")
-            session.findById("wnd[0]/usr/ctxtCOAS-AUFNR").text = ordem_num
-            session.findById("wnd[0]/tbar[1]/btn[42]").press()  # Executar
-            time.sleep(0.5)
-
-            status_message = session.findById("wnd[0]/sbar").text.strip()
-            if not status_message:
-                centro = session.findById(
-                    "wnd[0]/usr/tabsTABSTRIP_600/tabpBUT1/"
-                    "ssubAREA_FOR_601:SAPMKAUF:0601/"
-                    "subAREA1:SAPMKAUF:0315/ctxtCOAS-KOSTV"
-                ).text.strip()
-                if centro:
-                    or_para_e[ordem] = centro
-                session.findById("wnd[0]/tbar[0]/btn[3]").press()  # Voltar
-                time.sleep(0.5)
-        except Exception as e:
-            print(f"⚠️ Erro ao buscar {ordem}: {e}")
-            continue
-
-    return or_para_e
-
-# --- KS13 - Buscar Gerência Responsável ---
-def executar_ks13(session, objetos_e):
-    """Executa KS13 e retorna dict {Exxxxx: GERÊNCIA}"""
-    if not objetos_e:
-        return {}
-
-    session.findById("wnd[0]/tbar[0]/okcd").text = "/nKS13"
-    session.findById("wnd[0]").sendVKey(0)
-    time.sleep(1)
-
-    gerencias = {}
-
-    # Seleciona área "ACPB"
-    try:
-        session.findById("wnd[0]").sendVKey(6)
-        session.findById("wnd[1]/usr/sub:SAPLSPO4:0300/ctxtSVALD-VALUE[0,21]").text = "ACPB"
-        session.findById("wnd[1]").sendVKey(0)
-    except:
-        pass
-
-    session.findById("wnd[0]/usr/subKOSTL_SELECTION:SAPLKMS1:0100/ctxtKMAS_D-KOSTL").setFocus()
-    session.findById("wnd[0]").sendVKey(4)
-    session.findById("wnd[1]/usr/tabsG_SELONETABSTRIP/tabpTAB001").select()
-    session.findById(
-        "wnd[1]/usr/tabsG_SELONETABSTRIP/tabpTAB001/"
-        "ssubSUBSCR_PRESEL:SAPLSDH4:0220/"
-        "sub:SAPLSDH4:0220/btnG_SELFLD_TAB-MORE[0,56]"
-    ).press()
-
-    # Preenche lista de objetos
-    for obj in objetos_e:
-        try:
-            session.findById(
-                "wnd[2]/usr/tabsTAB_STRIP/tabpSIVA/"
-                "ssubSCREEN_HEADER:SAPLALDB:3010/"
-                "tblSAPLALDBSINGLE/txtRSCSEL_255-SLOW_I[1,0]"
-            ).text = obj
-            session.findById("wnd[2]/tbar[0]/btn[13]").press()
-        except:
-            pass
-
-    session.findById("wnd[2]/tbar[0]/btn[8]").press()
-    time.sleep(1)
-    session.findById(
-        "wnd[1]/usr/tabsG_SELONETABSTRIP/tabpTAB001/"
-        "ssubSUBSCR_PRESEL:SAPLSDH4:0220/chkG_SELPOP_STATE-BUTTON"
-    ).selected = True
-    session.findById("wnd[1]/tbar[0]/btn[0]").press()
-
-    # Captura da tabela (varre todas as linhas)
-    try:
-        container = session.findById("wnd[1]/usr")
-        max_scroll = container.VerticalScrollbar.Maximum
-        scroll = 0
-        while True:
-            container.VerticalScrollbar.Position = scroll
-            elements = container.Children
-            for i in range(19, len(elements), 10):
-                cost_center = elements.ElementAt(i - 9).Text
-                responsible = elements.ElementAt(i - 5).Text
-                until_date = elements.ElementAt(i).Text
-                if ".9999" in until_date:
-                    gerencias[cost_center] = responsible
-            if scroll >= max_scroll:
-                break
-            scroll += container.VerticalScrollbar.Range
-            if scroll > max_scroll:
-                scroll = max_scroll
-        session.findById("wnd[1]/tbar[0]/btn[12]").press()
-    except Exception as e:
-        print(f"⚠️ Erro durante leitura KS13: {e}")
-
-    return gerencias
 
 # --- Execução KO03 + KS13 ---
 print("🚀 Executando KO03 (ordens OR → centros E)...")
