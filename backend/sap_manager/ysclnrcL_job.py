@@ -2,6 +2,9 @@ from sap_connect import get_sap_free_session, start_sap_manager, start_connectio
 from datetime import datetime, timedelta
 import subprocess
 import os
+import json
+
+json_path = os.path.join(os.path.dirname(__file__), "requests.json")
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
     """
@@ -15,20 +18,20 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
         print(f"🔹 Processando requisição {i}...")
 
         # --- Preenche campos principais ---
-        session.findById("wnd[0]/usr/ctxtP_BUK_N").text = ""
-        session.findById("wnd[0]/usr/txtPC_ANO").text = "2024"
-        session.findById("wnd[0]/usr/cmbTRI").key = "1"
-        session.findById("wnd[0]/usr/ctxtPC_CODCB").text = ""
-        session.findById("wnd[0]/usr/ctxtPC_FASE").text = "D"
-        session.findById("wnd[0]/usr/ctxtPC_STAT").text = ""
-        session.findById("wnd[0]/usr/ctxtP_VERSAO").text = "2"
-        session.findById("wnd[0]/usr/ctxtP_SECAO").text = "ANP_0901"
+        session.findById("wnd[0]/usr/ctxtP_BUK_N").text = req.get("empresa", "")
+        session.findById("wnd[0]/usr/txtPC_ANO").text = req.get("exercicio", "")
+        session.findById("wnd[0]/usr/cmbTRI").key = req.get("trimestre", "1")
+        session.findById("wnd[0]/usr/ctxtPC_CODCB").text = req.get("campo", "")
+        session.findById("wnd[0]/usr/ctxtPC_FASE").text = req.get("fase", "")
+        session.findById("wnd[0]/usr/ctxtPC_STAT").text = req.get("status", "")
+        session.findById("wnd[0]/usr/ctxtP_VERSAO").text = req.get("versao", "")
+        session.findById("wnd[0]/usr/ctxtP_SECAO").text = req.get("secao", "")
 
         # --- Abre filtro avançado ---
         session.findById("wnd[0]/tbar[1]/btn[19]").press()
-        session.findById("wnd[0]/usr/ctxtSC_PSPID-LOW").text = "JV3A5118530"
-        session.findById("wnd[0]/usr/ctxtSD_DTINI-LOW").text = "01.01.2024"
-        session.findById("wnd[0]/usr/ctxtPC_BID").text = "002"
+        session.findById("wnd[0]/usr/ctxtSC_PSPID-LOW").text = req.get("defprojeto", "")
+        session.findById("wnd[0]/usr/ctxtSD_DTINI-LOW").text = req.get("datainicio", "")
+        session.findById("wnd[0]/usr/ctxtPC_BID").text = req.get("bidround", "")
 
         session.findById("wnd[0]/usr/chkP_PART").selected = True
 
@@ -60,9 +63,8 @@ if __name__ == "__main__":
     session = get_sap_free_session()
 
     # Simula dados que seriam lidos de planilha ou banco
-    requests_data = [
-        {"PC_CODCB": "ABC123", "SC_PSPID_LOW": "JV3A03108410", "SD_DTINI_LOW": "01.01.2011"},
-    ]
+    with open(json_path, "r", encoding="utf-8") as f:
+        requests_data = json.load(f)
 
     create_YSCLBLRIT_requests(
         session=session,

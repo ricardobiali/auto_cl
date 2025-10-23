@@ -331,10 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const duration = 400; // deve casar com seu transition CSS (0.4s)
 
         if (show) {
-            // Antes de adicionar .show, precisamos garantir display adequado para que o elemento participe do layout
             element.style.display = ''; // '' devolve ao default (block/inline conforme o elemento)
-            // Forçar reflow rápido garante que a mudança de display seja aplicada antes de adicionar a classe .show
-            // (ajuda a otimizadores do browser a aplicar transição)
             void element.offsetWidth;
             element.classList.add('show');
         } else {
@@ -395,9 +392,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // ⚙️ Lógica do botão "Executar Automação"
     const runBtn = document.getElementById('runBtn');
     if (runBtn) {
-        runBtn.addEventListener('click', function () {
+        runBtn.addEventListener('click', async function () {
             const data = [];
             for (let i = 1; i <= rows; i++) {
+                const rawDate = document.querySelector(`[name="datainicio_${i}"]`).value;
+                let formattedDate = "";
+                if (rawDate) {
+                    const [year, month, day] = rawDate.split("-");
+                    formattedDate = `${day}${month}${year}`; // ddmmaaaa
+                }
+
                 const rowObj = {
                     empresa: document.querySelector(`[name="empresa_${i}"]`).value.trim(),
                     exercicio: document.querySelector(`[name="exercicio_${i}"]`).value.trim(),
@@ -408,11 +412,31 @@ document.addEventListener('DOMContentLoaded', function () {
                     versao: document.querySelector(`[name="versao_${i}"]`).value.trim(),
                     secao: document.querySelector(`[name="secao_${i}"]`).value.trim(),
                     defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
-                    datainicio: document.querySelector(`[name="datainicio_${i}"]`).value,
+                    datainicio: formattedDate,
                     bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
                 };
                 data.push(rowObj);
             }
+
+            // Envia direto para o backend
+            const response = await fetch("http://127.0.0.1:8000/save_requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            // if (response.ok) {
+            //    alert("✅ Dados enviados e requests.json atualizado com sucesso!");
+            // } else {
+            //     alert("⚠️ Falha ao enviar os dados.");
+            // }
+
+                // Cria o arquivo requests.json
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "requests.json";
+                link.click();
 
             const paths = {
                 path1: document.querySelector('[name="path1"]').value.trim(),
@@ -435,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Linhas:', data);
             console.log('Paths:', paths);
             console.log('Opções selecionadas:', switches);
-            alert('Dados coletados no console (verifique) — integração com backend a seguir.');
+            // alert('Dados coletados no console (verifique) — integração com backend a seguir.');
         });
     }
 
