@@ -415,7 +415,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     datainicio: formattedDate,
                     bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
                 };
-                data.push(rowObj);
+                
+                // ✅ Somente adiciona se **algum campo estiver preenchido**
+                const hasValue = Object.values(rowObj).some(v => v !== "");
+                if (hasValue) data.push(rowObj);
             }
 
             // Envia direto para o backend
@@ -424,12 +427,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
             });
-
-            // if (response.ok) {
-            //    alert("✅ Dados enviados e requests.json atualizado com sucesso!");
-            // } else {
-            //     alert("⚠️ Falha ao enviar os dados.");
-            // }
 
                 // Cria o arquivo requests.json
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -459,7 +456,6 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('Linhas:', data);
             console.log('Paths:', paths);
             console.log('Opções selecionadas:', switches);
-            // alert('Dados coletados no console (verifique) — integração com backend a seguir.');
         });
     }
 

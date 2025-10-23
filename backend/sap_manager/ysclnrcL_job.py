@@ -4,7 +4,7 @@ import subprocess
 import os
 import json
 
-json_path = os.path.join(os.path.dirname(__file__), "requests.json")
+json_path = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend\framework\requests.json"
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
     """
@@ -42,7 +42,6 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 
         # --- Calcula data/hora do agendamento ---
         job_init_datetime = datetime.now() + timedelta(minutes=1)
-
         str_date_plan = job_init_datetime.strftime("%d.%m.%Y")
         str_time_plan = job_init_datetime.strftime("%H:%M:%S")
 
@@ -58,14 +57,25 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 # Execução principal
 # ============================================================
 if __name__ == "__main__":
-    started_by_script = start_sap_manager()  # abre SAP se necessário
+    started_by_script = start_sap_manager()
     start_connection()
     session = get_sap_free_session()
 
-    # Simula dados que seriam lidos de planilha ou banco
-    with open(json_path, "r", encoding="utf-8") as f:
-        requests_data = json.load(f)
+    # --- Lê requests.json ---
+    requests_data = []
+    if os.path.exists(json_path):
+        with open(json_path, "r", encoding="utf-8") as f:
+            try:
+                requests_data = json.load(f)
+                if not isinstance(requests_data, list):
+                    print("❌ Formato inválido em requests.json: deveria ser uma lista")
+                    requests_data = []
+            except json.JSONDecodeError as e:
+                print("❌ Erro ao ler requests.json:", e)
+    else:
+        print(f"❌ Arquivo não encontrado: {json_path}")
 
+    # --- Cria requisições ---
     create_YSCLBLRIT_requests(
         session=session,
         init_date="01.01.2011",
@@ -74,6 +84,9 @@ if __name__ == "__main__":
         requests_data=requests_data
     )
 
-# Caminho absoluto ou relativo
-reports_path = os.path.join(os.path.dirname(__file__), "..", "reports", "completa.py")
-subprocess.run(["python", reports_path], check=True)
+    # --- Executa relatório adicional ---
+    reports_path = os.path.join(os.path.dirname(__file__), "..", "reports", "completa.py")
+    if os.path.exists(reports_path):
+        subprocess.run(["python", reports_path], check=True)
+    else:
+        print(f"❌ Script de reports não encontrado: {reports_path}")
