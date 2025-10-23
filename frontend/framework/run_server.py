@@ -1,6 +1,7 @@
 from flask import Flask, send_from_directory, jsonify, request
 import os
 import json
+import subprocess
 import user_data
 from flask_cors import CORS
 
@@ -9,6 +10,9 @@ BASE_DIR = os.path.dirname(__file__)
 
 # Caminho completo do requests.json (ajuste conforme sua rede)
 REQUESTS_PATH = os.path.join(BASE_DIR, "requests.json")
+
+# ✅ Caminho completo do script ysclnrcl_job.py
+YSCLNRCL_PATH = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\backend\sap_manager\ysclnrcl_job.py"
 
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 CORS(app)
@@ -46,6 +50,9 @@ def save_requests():
         # Salva o arquivo diretamente no local desejado
         with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
+        
+        # ✅ Executa o script ysclnrcl_job.py logo após salvar o JSON
+        subprocess.Popen(["python", YSCLNRCL_PATH], shell=True)
 
         return jsonify({
             "status": "ok",
@@ -71,4 +78,5 @@ if __name__ == '__main__':
     port = 8000
     print(f"🚀 Servidor rodando em http://localhost:{port}")
     print(f"📂 Salvando requests.json em: {REQUESTS_PATH}")
+    print(f"⚙️ Executando job em: {YSCLNRCL_PATH}")
     app.run(host='127.0.0.1', port=port, debug=True)
