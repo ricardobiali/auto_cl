@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import sys
 import shutil
 import glob
@@ -14,12 +15,20 @@ started_by_script = start_sap_manager()
 start_connection()
 session = get_sap_free_session()
 
-# Nome usuário Windows
+# Caminho atual do script
+current_dir = Path(__file__).resolve()
 username = os.getlogin()
+
+# Sobe até encontrar a pasta 'auto_cl_prototype'
+root_dir = current_dir
+while root_dir.name != "auto_cl_prototype":
+    if root_dir.parent == root_dir:
+        raise FileNotFoundError("Pasta 'auto_cl_prototype' não encontrada.")
+    root_dir = root_dir.parent
 
 # Caminho do requests.json
 requests_path = os.path.join(
-    fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend",
+    fr"{root_dir}\frontend",
     "requests.json"
 )
 
@@ -46,20 +55,20 @@ if os.path.exists(requests_path):
             if len(datainicio) == 8 and datainicio.isdigit():
                 datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
             else:
-                print(f"⚠️ Formato inesperado de datainicio: {datainicio}")
+                print(f"Formato inesperado de datainicio: {datainicio}")
 
         else:
-            print("⚠️ Nenhum registro em 'requests', usando valores padrão.")
+            print("Nenhum registro em 'requests', usando valores padrão.")
 
         # Lê path1 do primeiro item em 'paths', se existir
         if paths_list and isinstance(paths_list, list):
             path1 = paths_list[0].get("path1", "").strip()
             if not path1:
-                print("⚠️ 'path1' vazio no requests.json, usando padrão.")
+                print("'path1' vazio no requests.json, usando padrão.")
         else:
-            print("⚠️ Nenhum registro em 'paths', usando padrão.")
+            print("Nenhum registro em 'paths', usando padrão.")
 else:
-    print(f"⚠️ Arquivo requests.json não encontrado em {requests_path}, usando valores padrão.")
+    print(f"Arquivo requests.json não encontrado em {requests_path}, usando valores padrão.")
 
 # Caminhos de origem e destino
 origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
@@ -80,7 +89,7 @@ session.findById("wnd[0]").sendVKey(0)
 session.findById("wnd[0]/usr/chkBTCH2170-PRELIM").selected = True
 session.findById("wnd[0]/tbar[1]/btn[8]").press()
 
-print(f"🔍 Iniciando monitoramento da pasta:\n   {origem}")
+print(f"Iniciando monitoramento da pasta:\n   {origem}")
 print(f"Aguardando arquivo com padrão: {padrao}\n")
 
 while True:
@@ -93,14 +102,14 @@ while True:
             destino_final = os.path.join(destino, nome_arquivo)
             try:
                 shutil.move(arquivo, destino_final)
-                print(f"\n✅ [{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
+                print(f"\n [{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
                 print(f"   ➜ {nome_arquivo}")
                 print(f"   ➜ De: {origem}")
                 print(f"   ➜ Para: {destino_final}")
                 print("\nEncerrando monitoramento.")
                 exit(0)
             except Exception as e:
-                print(f"⚠️ Erro ao mover {nome_arquivo}: {e}")
+                print(f"Erro ao mover {nome_arquivo}: {e}")
                 time.sleep(intervalo_busca)
     else:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Arquivo ainda não encontrado... tentando novamente em {intervalo_busca} segundos.")

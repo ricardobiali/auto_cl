@@ -1,9 +1,9 @@
 {
     "paths": [
         {
-            "path1": "teste",
-            "path2": "teste",
-            "path3": "teste",
+            "path1": "C:\\Users\\U33V\\OneDrive - PETROBRAS\\Desktop\\Auto_CL\\Fase 0 - Arquivos de Texto do SAP",
+            "path2": "",
+            "path3": "",
             "path4": "",
             "path5": "",
             "path6": ""
@@ -12,16 +12,16 @@
     "requests": [
         {
             "empresa": "1000",
-            "exercicio": "",
-            "trimestre": "",
+            "exercicio": "2024",
+            "trimestre": "1",
             "campo": "",
-            "fase": "",
-            "status": "",
-            "versao": "",
-            "secao": "",
-            "defprojeto": "",
-            "datainicio": "",
-            "bidround": ""
+            "fase": "D",
+            "status": "3",
+            "versao": "2",
+            "secao": "ANP_0901",
+            "defprojeto": "JV3A5118530",
+            "datainicio": "01012024",
+            "bidround": "002"
         }
     ]
 }

@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tbody = document.getElementById('rows-body');
     const rows = 20;
 
-    // 🧱 Cria a tabela dinamicamente
+    // Cria a tabela dinamicamente
     for (let i = 1; i <= rows; i++) {
         const tr = document.createElement('tr');
         const tdIndex = document.createElement('td');
@@ -111,6 +111,29 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const runBtn = document.getElementById('runBtn');
+    const avisosContainer = document.getElementById('avisosContainer');
+    const avisosContent = document.getElementById('avisosContent');
+
+    function exibirAvisos(mensagens) {
+        avisosContent.innerHTML = mensagens.map(msg => `
+            <li>
+                <div class="spinner-border" role="status" aria-hidden="true"></div>
+                <span>${msg}</span>
+            </li>
+        `).join('');
+        avisosContainer.style.display = 'block';
+        avisosContainer.classList.add('fade-in');
+    }
+
+    function atualizarAvisoFinal(iconHtml, texto) {
+        avisosContent.innerHTML = `
+            <li style="display:flex; align-items:center; gap:6px;">
+                ${iconHtml}
+                <span>${texto}</span>
+            </li>
+        `;
+    }
+
     if (runBtn) {
         runBtn.addEventListener('click', async function () {
             const data = [];
@@ -120,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 let formattedDate = "";
                 if (rawDate) {
                     const [year, month, day] = rawDate.split("-");
-                    formattedDate = `${day}${month}${year}`; // ddmmaaaa
+                    formattedDate = `${day}${month}${year}`;
                 }
 
                 const rowObj = {
@@ -152,61 +175,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const payload = { paths: paths, requests: data };
 
-            const response = await fetch("http://127.0.0.1:8000/save_requests", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            // 🔹 Exibe avisos com spinner
+            const mensagens = [];
+            if (document.getElementById('switch1')?.checked) mensagens.push("Aguardando requisição da base do SAP");
+            if (document.getElementById('switch2')?.checked) mensagens.push("Aguardando relatório completo");
+            if (document.getElementById('switch3')?.checked) mensagens.push("Aguardando relatório reduzido");
+            if (document.getElementById('switch4')?.checked) mensagens.push("Aguardando relatório de Gastos Diretos");
+            if (document.getElementById('switch5')?.checked) mensagens.push("Aguardando relatório de Gastos Indiretos");
+            if (document.getElementById('switch6')?.checked) mensagens.push("Aguardando relatório de Estoques");
 
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "requests.json";
-            link.click();
+            if (mensagens.length > 0) exibirAvisos(mensagens);
 
-            const switches = {
-                relatorios: document.getElementById('switch1').checked,
-                graficos: document.getElementById('switch2').checked,
-                excel: document.getElementById('switch3').checked,
-                email: document.getElementById('switch4').checked,
-                backup: document.getElementById('switch5').checked,
-                modoRapido: document.getElementById('switch6').checked
-            };
+            // 🚀 Chamada ao backend Python
+            try {
+                const response = await fetch("http://127.0.0.1:8000/save_requests", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.status === "success") {
+                atualizarAvisoFinal(
+                    '<i class="bi bi-check-circle-fill" style="color: green; font-size:1.1rem;"></i>',
+                    result.message || "Arquivo criado com sucesso!"
+                );
+                } else {
+                throw new Error(result.message || "Erro desconhecido");
+                }
+
+
+            } catch (err) {
+                //  erro
+                atualizarAvisoFinal(
+                    '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
+                    "Ocorreu um erro na operação, revise os dados e tente novamente. Caso o erro persista, entre em contato com o administrador do programa"
+                );
+            }
 
             console.log("🔹 Linhas:", data);
             console.log("🔹 Paths:", paths);
-            console.log("🔹 Opções selecionadas:", switches);
-
-            // --- ⚠️ Avisos Dinâmicos ---
-            const runBtn = document.getElementById('runBtn');
-            const avisosContainer = document.getElementById('avisosContainer');
-            const avisosContent = document.getElementById('avisosContent');
-
-            runBtn.addEventListener('click', () => {
-                let mensagens = [];
-
-                // Checa switches ativos
-                if (document.getElementById('switch1')?.checked) mensagens.push("Aguardando requisição da base do SAP");
-                if (document.getElementById('switch2')?.checked) mensagens.push("Aguardando relatório completo");
-                if (document.getElementById('switch3')?.checked) mensagens.push("Aguardando relatório reduzido");
-                if (document.getElementById('switch4')?.checked) mensagens.push("Aguardando relatório de Gastos Diretos");
-                if (document.getElementById('switch5')?.checked) mensagens.push("Aguardando relatório de Gastos Indiretos");
-                if (document.getElementById('switch6')?.checked) mensagens.push("Aguardando relatório de Estoques");
-
-                if (mensagens.length > 0) {
-                    avisosContent.innerHTML = mensagens.map(msg => `
-                        <li>
-                            <div class="spinner-border" role="status" aria-hidden="true"></div>
-                            <span>${msg}</span>
-                        </li>
-                    `).join('');
-
-                    avisosContainer.style.display = 'block';
-                    avisosContainer.classList.add('fade-in');
-                } else {
-                    avisosContainer.style.display = 'none';
-                }
-            });
         });
     }
 

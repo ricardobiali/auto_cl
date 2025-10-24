@@ -1,13 +1,21 @@
+from pathlib import Path
 from sap_connect import get_sap_free_session, start_sap_manager, start_connection, close_sap_manager
 from datetime import datetime, timedelta
 import subprocess
 import os
 import json
 
-# Nome usuário Windows
-username = os.getlogin()
+# Caminho atual do script
+current_dir = Path(__file__).resolve()
 
-json_path = fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend\requests.json"
+# Sobe até encontrar a pasta 'auto_cl_prototype'
+root_dir = current_dir
+while root_dir.name != "auto_cl_prototype":
+    if root_dir.parent == root_dir:
+        raise FileNotFoundError("Pasta 'auto_cl_prototype' não encontrada.")
+    root_dir = root_dir.parent
+
+json_path = fr"{root_dir}\frontend\requests.json"
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
     """
@@ -18,7 +26,7 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
     session.findById("wnd[0]").sendVKey(0)
 
     for i, req in enumerate(requests_data, start=1):
-        print(f"🔹 Processando requisição {i}...")
+        print(f"Processando requisição {i}...")
 
         # --- Preenche campos principais ---
         session.findById("wnd[0]/usr/ctxtP_BUK_N").text = req.get("empresa", "")
@@ -54,7 +62,7 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
         session.findById("wnd[1]/tbar[0]/btn[0]").press()
         session.findById("wnd[1]/tbar[0]/btn[11]").press()
 
-        print(f"✅ Requisição {i} agendada para {str_date_plan} às {str_time_plan}")
+        print(f"Requisição {i} agendada para {str_date_plan} às {str_time_plan}")
 
 # ============================================================
 # Execução principal
@@ -79,11 +87,11 @@ if __name__ == "__main__":
                     requests_data = data
                     path_data = []
                 else:
-                    print("❌ Formato inesperado no requests.json")
+                    print("Formato inesperado no requests.json")
             except json.JSONDecodeError as e:
-                print("❌ Erro ao ler requests.json:", e)
+                print("Erro ao ler requests.json:", e)
     else:
-        print(f"❌ Arquivo não encontrado: {json_path}")
+        print(f"Arquivo não encontrado: {json_path}")
 
     # --- Cria requisições ---
     create_YSCLBLRIT_requests(
@@ -99,4 +107,4 @@ if __name__ == "__main__":
     if os.path.exists(reports_path):
         subprocess.run(["python", reports_path], check=True)
     else:
-        print(f"❌ Script de reports não encontrado: {reports_path}")
+        print(f"Script de reports não encontrado: {reports_path}")
