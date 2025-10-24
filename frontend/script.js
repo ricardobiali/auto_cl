@@ -1,158 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Automação SAP - Reduzida</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-
-<div class="container">
-    <div class="header-image">
-        <img src="./media/header.png" alt="Cabeçalho">
-    </div>
-
-    <div class="d-flex align-items-center justify-content-center mb-4">
-        <img src="./media/logo_br.jpg" alt="Logo Petrobras" style="height: 45px; margin-right: 30px;">
-        <h2 class="text-center mb-4">Pré-Auditoria de Conteúdo Local</h2>
-    </div>
-    <div>
-        <p class="mb-0" style="text-align: left; font-weight: bold;">Seja bem-vindo</p>
-    </div>
-
-    <!-- ⚙️ Opções de Configuração -->
-    <div class="form-section">
-        <h5>Opções de Configuração</h5>
-        <div class="row row-cols-2 g-3 mt-2">
-            <div class="col">
-                <div class="d-flex flex-column gap-2">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="switch1">
-                        <label class="form-check-label" for="switch1">Solicitação na base do SAP</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="switch2">
-                        <label class="form-check-label" for="switch2">Reporte Completo</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="switch3">
-                        <label class="form-check-label" for="switch3">Reporte Reduzido</label>
-                    </div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="d-flex flex-column gap-2">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="switch4">
-                        <label class="form-check-label" for="switch4">Gastos Diretos</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="switch5">
-                        <label class="form-check-label" for="switch5">Gastos Indiretos</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="switch6">
-                        <label class="form-check-label" for="switch6">Estoques</label>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabela de variáveis -->
-    <div class="table-container fade-toggle mb-3">
-        <table class="table table-bordered table-hover">
-            <thead class="table-light">
-                <tr>
-                    <th style="width:36px">#</th>
-                    <th>Empresa</th>
-                    <th>Exercício</th>
-                    <th>Trimestre</th>
-                    <th>Campo/Bloco</th>
-                    <th>Fase</th>
-                    <th>Status</th>
-                    <th>Versão</th>
-                    <th>Seção.Expurgo</th>
-                    <th>Def.Projeto</th>
-                    <th>Data Início</th>
-                    <th>Bidround proposto</th>
-                </tr>
-            </thead>
-            <tbody id="rows-body">
-                <!-- Linhas geradas via JS -->
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 📁 Caminhos de Rede -->
-    <div class="form-section fade-toggle">
-        <h5>Diretórios de armazenamento dos relatórios</h5>
-
-        <div class="mb-3">
-            <label class="form-label">Diretório de armazenamento - Base SAP</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
-                <input type="text" class="form-control" name="path1" placeholder="C:\Users\...">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Diretório de armazenamento - Reporte Completo</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
-                <input type="text" class="form-control" name="path2" placeholder="C:\Users\...">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Diretório de armazenamento - Reporte Reduzido</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
-                <input type="text" class="form-control" name="path3" placeholder="C:\Users\...">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Diretório de armazenamento - Gastos Diretos</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
-                <input type="text" class="form-control" name="path4" placeholder="C:\Users\...">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Diretório de armazenamento - Gastos Indiretos</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
-                <input type="text" class="form-control" name="path5" placeholder="C:\Users\...">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Diretório de armazenamento - Estoques</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
-                <input type="text" class="form-control" name="path6" placeholder="C:\Users\...">
-            </div>
-        </div>
-    </div>
-
-    <!-- 🚀 Botão de Envio -->
-    <div id="runSection" class="mt-4 fade-toggle" style="display: none;">
-        <button id="runBtn" type="button" class="btn btn-primary">
-            <i class="fa-solid fa-play me-2"></i>Executar Automação
-        </button>
-    </div>
-
-    <footer>
-        <p class="mt-4 mb-0">© v.1.0.0 2025 Automação Petrobras | Desenvolvido por Ricardo Biali - U33V</p>
-    </footer>
-</div>
-
-<script>
 document.addEventListener('DOMContentLoaded', function () {
     const tbody = document.getElementById('rows-body');
     const rows = 20;
@@ -201,7 +46,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const directoriesSection = document.querySelectorAll('.form-section')[1]; // segunda form-section (diretórios)
     const runSection = document.getElementById('runSection');
 
-    // pathInputs: pega os contêineres .mb-3 que envolvem cada input
     const pathInputs = {
         path1: document.querySelector('[name="path1"]').closest('.mb-3'),
         path2: document.querySelector('[name="path2"]').closest('.mb-3'),
@@ -211,17 +55,14 @@ document.addEventListener('DOMContentLoaded', function () {
         path6: document.querySelector('[name="path6"]').closest('.mb-3')
     };
 
-    // Garante que os elementos têm a classe fade-toggle (necessária para a transição)
     [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
         if (!el) return;
         el.classList.add('fade-toggle');
     });
 
-    // Helper: mostra/oculta com transição (usa CSS .fade-toggle e .show)
     function toggleFade(element, show) {
         if (!element) return;
-        const duration = 400; // deve casar com seu transition CSS (0.4s)
-
+        const duration = 400;
         if (show) {
             element.style.display = '';
             void element.offsetWidth;
@@ -243,7 +84,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ⚡ Atualiza visibilidade conforme switches
     function updateVisibility() {
         const s1 = document.getElementById('switch1').checked;
         const s2 = document.getElementById('switch2').checked;
@@ -270,7 +110,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (sw) sw.addEventListener('change', updateVisibility);
     }
 
-    // ⚙️ Lógica do botão "Executar Automação"
     const runBtn = document.getElementById('runBtn');
     if (runBtn) {
         runBtn.addEventListener('click', async function () {
@@ -298,12 +137,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
                 };
 
-                // ✅ Apenas adiciona se houver algum valor preenchido
                 const hasValue = Object.values(rowObj).some(v => v !== "");
                 if (hasValue) data.push(rowObj);
             }
 
-            // 📂 Coleta diretórios
             const paths = [{
                 path1: document.querySelector("input[name='path1']").value || "",
                 path2: document.querySelector("input[name='path2']")?.value || "",
@@ -313,20 +150,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 path6: document.querySelector("input[name='path6']")?.value || ""
             }];
 
-            // 📦 Monta estrutura final para salvar
-            const payload = {
-                paths: paths,
-                requests: data
-            };
+            const payload = { paths: paths, requests: data };
 
-            // 💾 Envia para o backend
             const response = await fetch("http://127.0.0.1:8000/save_requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
 
-            // 💽 Cria o arquivo requests.json localmente
             const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -345,14 +176,39 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log("🔹 Linhas:", data);
             console.log("🔹 Paths:", paths);
             console.log("🔹 Opções selecionadas:", switches);
+
+            // --- ⚠️ Avisos Dinâmicos ---
+            const runBtn = document.getElementById('runBtn');
+            const avisosContainer = document.getElementById('avisosContainer');
+            const avisosContent = document.getElementById('avisosContent');
+
+            runBtn.addEventListener('click', () => {
+                let mensagens = [];
+
+                // Checa switches ativos
+                if (document.getElementById('switch1')?.checked) mensagens.push("Aguardando requisição da base do SAP");
+                if (document.getElementById('switch2')?.checked) mensagens.push("Aguardando relatório completo");
+                if (document.getElementById('switch3')?.checked) mensagens.push("Aguardando relatório reduzido");
+                if (document.getElementById('switch4')?.checked) mensagens.push("Aguardando relatório de Gastos Diretos");
+                if (document.getElementById('switch5')?.checked) mensagens.push("Aguardando relatório de Gastos Indiretos");
+                if (document.getElementById('switch6')?.checked) mensagens.push("Aguardando relatório de Estoques");
+
+                if (mensagens.length > 0) {
+                    avisosContent.innerHTML = mensagens.map(msg => `
+                        <li>
+                            <div class="spinner-border" role="status" aria-hidden="true"></div>
+                            <span>${msg}</span>
+                        </li>
+                    `).join('');
+
+                    avisosContainer.style.display = 'block';
+                    avisosContainer.classList.add('fade-in');
+                } else {
+                    avisosContainer.style.display = 'none';
+                }
+            });
         });
     }
 
-    // Inicializa o estado visual
     updateVisibility();
 });
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>

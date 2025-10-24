@@ -4,7 +4,10 @@ import subprocess
 import os
 import json
 
-json_path = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend\framework\requests.json"
+# Nome usuário Windows
+username = os.getlogin()
+
+json_path = fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend\requests.json"
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
     """

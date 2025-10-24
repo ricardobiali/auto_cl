@@ -2,7 +2,7 @@ body {
     background-color: #f8f9fa;
 }
 .container {
-    max-width: 950px;
+    max-width: 1050px;
     background-color: white;
     border-radius: 12px;
     box-shadow: 0 0 12px rgba(0,0,0,0.1);
@@ -14,7 +14,7 @@ body {
     left: 50%;
     transform: translateX(-50%);
     top: -30px;
-    width: 109.5%;
+    width: 108.5%;
     height: auto;
     border-radius: 15px;
 }
@@ -108,7 +108,32 @@ footer {
     opacity: 1;
     visibility: visible;
 }
-/* Pequena responsividade para telas muito pequenas */
+.aviso-text {
+    background-color: transparent; /* sem fundo */
+    color: #000; /* texto preto */
+    font-weight: 600; /* negrito */
+    border: none; /* remove borda do alert */
+    padding: 8px 0;
+    list-style-type: none;
+    margin-left: 0;
+}
+.aviso-text li {
+    margin-bottom: 6px;
+    padding-left: 0;
+}
+.aviso-text .spinner-border {
+    width: 1rem;
+    height: 1rem;
+    border-width: 2px;
+    color: #008542;
+}
+.fade-in {
+    animation: fadeIn 0.6s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 @media (max-width: 768px) {
     .container { padding: 20px; max-width: 100%; margin: 12px; }
     .header-image img { width: 120%; top: -10px; }

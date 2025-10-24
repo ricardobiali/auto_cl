@@ -19,7 +19,7 @@ username = os.getlogin()
 
 # Caminho do requests.json
 requests_path = os.path.join(
-    fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend\framework",
+    fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend",
     "requests.json"
 )
 
