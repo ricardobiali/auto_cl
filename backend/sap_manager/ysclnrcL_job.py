@@ -63,13 +63,20 @@ if __name__ == "__main__":
 
     # --- Lê requests.json ---
     requests_data = []
+    path_data = []
+
     if os.path.exists(json_path):
         with open(json_path, "r", encoding="utf-8") as f:
             try:
-                requests_data = json.load(f)
-                if not isinstance(requests_data, list):
-                    print("❌ Formato inválido em requests.json: deveria ser uma lista")
-                    requests_data = []
+                data = json.load(f)
+                if isinstance(data, dict):
+                    requests_data = data.get("requests", [])
+                    path_data = data.get("paths", [])
+                elif isinstance(data, list):
+                    requests_data = data
+                    path_data = []
+                else:
+                    print("❌ Formato inesperado no requests.json")
             except json.JSONDecodeError as e:
                 print("❌ Erro ao ler requests.json:", e)
     else:

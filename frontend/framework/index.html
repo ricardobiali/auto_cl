@@ -148,7 +148,7 @@
     </div>
 
     <footer>
-        <p class="mt-4 mb-0">© v.1 2025 Automação Petrobras | Desenvolvido por Ricardo Biali - U33V</p>
+        <p class="mt-4 mb-0">© v.1.0.0 2025 Automação Petrobras | Desenvolvido por Ricardo Biali - U33V</p>
     </footer>
 </div>
 
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function () {
         path6: document.querySelector('[name="path6"]').closest('.mb-3')
     };
 
-    // Garantir que os elementos têm a classe fade-toggle (necessária para a transição)
+    // Garante que os elementos têm a classe fade-toggle (necessária para a transição)
     [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
         if (!el) return;
         el.classList.add('fade-toggle');
@@ -223,15 +223,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const duration = 400; // deve casar com seu transition CSS (0.4s)
 
         if (show) {
-            element.style.display = ''; // '' devolve ao default (block/inline conforme o elemento)
+            element.style.display = '';
             void element.offsetWidth;
             element.classList.add('show');
         } else {
-            // remove a classe 'show' para iniciar fade out
             element.classList.remove('show');
-            // após a transição, colocamos display:none para tirar do fluxo
             setTimeout(() => {
-                // Só aplicar display:none se o elemento ainda não tiver sido reativado
                 if (!element.classList.contains('show')) {
                     element.style.display = 'none';
                 }
@@ -241,7 +238,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
         if (!el) return;
-        // se já tiver classe show no HTML não alteramos
         if (!el.classList.contains('show')) {
             el.style.display = 'none';
         }
@@ -256,26 +252,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const s5 = document.getElementById('switch5').checked;
         const s6 = document.getElementById('switch6').checked;
 
-        // qualquer switch ligado faz a seção de diretórios e botão aparecerem
         const anySwitchOn = s1 || s2 || s3 || s4 || s5 || s6;
 
-        // tabela aparece somente se s1 (Solicitação base SAP) estiver ligado
         toggleFade(tableSection, s1);
-
-        // caminhos individuais
         toggleFade(pathInputs.path1, s1);
         toggleFade(pathInputs.path2, s2);
         toggleFade(pathInputs.path3, s3);
         toggleFade(pathInputs.path4, s4);
         toggleFade(pathInputs.path5, s5);
         toggleFade(pathInputs.path6, s6);
-
-        // seção de diretórios e botão aparecem se qualquer switch estiver ativo
         toggleFade(directoriesSection, anySwitchOn);
         toggleFade(runSection, anySwitchOn);
     }
 
-    // 🪄 Listeners nos switches
     for (let i = 1; i <= 6; i++) {
         const sw = document.getElementById(`switch${i}`);
         if (sw) sw.addEventListener('change', updateVisibility);
@@ -286,6 +275,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (runBtn) {
         runBtn.addEventListener('click', async function () {
             const data = [];
+
             for (let i = 1; i <= rows; i++) {
                 const rawDate = document.querySelector(`[name="datainicio_${i}"]`).value;
                 let formattedDate = "";
@@ -307,34 +297,41 @@ document.addEventListener('DOMContentLoaded', function () {
                     datainicio: formattedDate,
                     bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
                 };
-                
-                // ✅ Somente adiciona se **algum campo estiver preenchido**
+
+                // ✅ Apenas adiciona se houver algum valor preenchido
                 const hasValue = Object.values(rowObj).some(v => v !== "");
                 if (hasValue) data.push(rowObj);
             }
 
-            // Envia direto para o backend
+            // 📂 Coleta diretórios
+            const paths = [{
+                path1: document.querySelector("input[name='path1']").value || "",
+                path2: document.querySelector("input[name='path2']")?.value || "",
+                path3: document.querySelector("input[name='path3']")?.value || "",
+                path4: document.querySelector("input[name='path4']")?.value || "",
+                path5: document.querySelector("input[name='path5']")?.value || "",
+                path6: document.querySelector("input[name='path6']")?.value || ""
+            }];
+
+            // 📦 Monta estrutura final para salvar
+            const payload = {
+                paths: paths,
+                requests: data
+            };
+
+            // 💾 Envia para o backend
             const response = await fetch("http://127.0.0.1:8000/save_requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
+                body: JSON.stringify(payload)
             });
 
-                // Cria o arquivo requests.json
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = "requests.json";
-                link.click();
-
-            const paths = {
-                path1: document.querySelector('[name="path1"]').value.trim(),
-                path2: document.querySelector('[name="path2"]').value.trim(),
-                path3: document.querySelector('[name="path3"]').value.trim(),
-                path4: document.querySelector('[name="path4"]').value.trim(),
-                path5: document.querySelector('[name="path5"]').value.trim(),
-                path6: document.querySelector('[name="path6"]').value.trim()
-            };
+            // 💽 Cria o arquivo requests.json localmente
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "requests.json";
+            link.click();
 
             const switches = {
                 relatorios: document.getElementById('switch1').checked,
@@ -345,13 +342,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 modoRapido: document.getElementById('switch6').checked
             };
 
-            console.log('Linhas:', data);
-            console.log('Paths:', paths);
-            console.log('Opções selecionadas:', switches);
+            console.log("🔹 Linhas:", data);
+            console.log("🔹 Paths:", paths);
+            console.log("🔹 Opções selecionadas:", switches);
         });
     }
 
-    // Inicializa oculto/visível conforme estado atual dos switches
+    // Inicializa o estado visual
     updateVisibility();
 });
 </script>

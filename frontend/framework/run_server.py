@@ -36,7 +36,6 @@ def index():
 
     return html_content
 
-
 # -----------------------------
 # Endpoint para salvar o JSON
 # -----------------------------
@@ -47,10 +46,16 @@ def save_requests():
         if not data:
             return jsonify({"error": "Nenhum dado recebido"}), 400
 
-        # Salva o arquivo diretamente no local desejado
+        # ✅ Garante que o JSON tenha as chaves esperadas
+        final_data = {
+            "paths": data.get("paths", []),
+            "requests": data.get("requests", [])
+        }
+
+        # ✅ Salva o arquivo JSON formatado
         with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-        
+            json.dump(final_data, f, indent=4, ensure_ascii=False)
+
         # ✅ Executa o script ysclnrcl_job.py logo após salvar o JSON
         subprocess.Popen(["python", YSCLNRCL_PATH], shell=True)
 

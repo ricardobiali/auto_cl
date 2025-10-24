@@ -17,22 +17,24 @@ session = get_sap_free_session()
 # Nome usuário Windows
 username = os.getlogin()
 
-# Caminhos de origem e destino
-origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
-destino = fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP"
-
 # Caminho do requests.json
 requests_path = os.path.join(
     fr"C:\Users\{username}\OneDrive - PETROBRAS\Desktop\python\auto_cl_prototype\frontend\framework",
     "requests.json"
 )
 
+# Valores padrão
+defprojeto = fase = status = datainicio = exercicio = trimestre = path1 = "DEFAULT"
+
 # Lê o arquivo requests.json e extrai dados do primeiro item
 if os.path.exists(requests_path):
     with open(requests_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-        if isinstance(data, list) and len(data) > 0:
-            first = data[0]
+        requests_list = data.get("requests", [])
+        paths_list = data.get("paths", [])
+
+        if requests_list and isinstance(requests_list, list):
+            first = requests_list[0]
             defprojeto = first.get("defprojeto", "").strip()
             fase = first.get("fase", "").strip()
             status = first.get("status", "").strip()
@@ -47,16 +49,26 @@ if os.path.exists(requests_path):
                 print(f"⚠️ Formato inesperado de datainicio: {datainicio}")
 
         else:
-            print("⚠️ Nenhum registro encontrado no requests.json, usando valores padrão.")
-            defprojeto = fase = status = datainicio = exercicio = trimestre = "DEFAULT"
+            print("⚠️ Nenhum registro em 'requests', usando valores padrão.")
+
+        # Lê path1 do primeiro item em 'paths', se existir
+        if paths_list and isinstance(paths_list, list):
+            path1 = paths_list[0].get("path1", "").strip()
+            if not path1:
+                print("⚠️ 'path1' vazio no requests.json, usando padrão.")
+        else:
+            print("⚠️ Nenhum registro em 'paths', usando padrão.")
 else:
     print(f"⚠️ Arquivo requests.json não encontrado em {requests_path}, usando valores padrão.")
-    defprojeto = fase = status = datainicio = exercicio = trimestre = "DEFAULT"
+
+# Caminhos de origem e destino
+origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
+destino = path1  # ✅ Agora usa path1 em vez de caminho fixo
 
 # 📅 Data corrente no formato aaaammdd
 datacorrente = datetime.now().strftime("%Y%m%d")
 
-# Padrão dinâmico de arquivo (inclui datacorrente)
+# Padrão dinâmico de arquivo
 padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
 
 # Intervalo entre verificações (em segundos)
@@ -72,7 +84,6 @@ print(f"🔍 Iniciando monitoramento da pasta:\n   {origem}")
 print(f"Aguardando arquivo com padrão: {padrao}\n")
 
 while True:
-    # Verifica se o arquivo já chegou
     arquivos = glob.glob(os.path.join(origem, padrao))
     session.findById("wnd[0]/tbar[1]/btn[8]").press()
 
