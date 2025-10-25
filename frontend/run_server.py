@@ -22,7 +22,6 @@ REQUESTS_PATH = os.path.join(BASE_DIR, "requests.json")
 YSCLNRCL_PATH = fr"{root_dir}\backend\sap_manager\ysclnrcl_job.py"
 COMPLETA_XL_PATH = fr"{root_dir}\backend\reports\completa_xl.py"
 
-
 # Flask app
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 CORS(app)
@@ -104,8 +103,8 @@ def save_requests():
 
     results = []
 
-    # --- Executa scripts conforme switches ---
     try:
+        # --- Executa YSCLNRCL_JOB ---
         if switch1_active:
             completed_process_1 = subprocess.run(
                 ["python", YSCLNRCL_PATH],
@@ -114,8 +113,32 @@ def save_requests():
                 check=True
             )
             print(completed_process_1.stdout)
-            results.append("Job SAP executado com sucesso.")
 
+            # Extrai o status da saída do script
+            if "===STATUS_DONE===status_success" in completed_process_1.stdout:
+                status_completa = "status_success"
+            elif "===STATUS_DONE===status_error" in completed_process_1.stdout:
+                status_completa = "status_error"
+
+            # Lê o requests.json atual
+            if os.path.exists(REQUESTS_PATH):
+                with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                    existing_data = json.load(f)
+            else:
+                existing_data = {"paths": [], "requests": []}
+
+            # Atualiza ou cria o bloco status
+            status_block = existing_data.get("status", [{}])[0]
+            status_block["completa.py"] = status_completa
+            existing_data["status"] = [status_block]
+
+            # Regrava o JSON atualizado
+            with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+                json.dump(existing_data, f, indent=4, ensure_ascii=False)
+
+            results.append("Job SAP executado e completa.py gerado com sucesso.")
+
+        # --- Executa COMPLETA_XL ---
         if switch2_active:
             completed_process_2 = subprocess.run(
                 ["python", COMPLETA_XL_PATH],
@@ -126,25 +149,25 @@ def save_requests():
             print(completed_process_2.stdout)
 
             # Extrai o status da saída do script
-            status_done = None
-            if "status_success" in completed_process_2.stdout:
-                status_done = "status_success"
-            elif "status_error" in completed_process_2.stdout:
-                status_done = "status_error"
+            status_completa_xl = "status_success" if "status_success" in completed_process_2.stdout else "status_error"
 
             # Lê o requests.json atual
-            with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
-                existing_data = json.load(f)
+            if os.path.exists(REQUESTS_PATH):
+                with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                    existing_data = json.load(f)
+            else:
+                existing_data = {"paths": [], "requests": []}
 
-            # Adiciona ou atualiza o bloco "status"
-            existing_data["status"] = [{"completa_xl.py": status_done}]
+            # Atualiza ou cria o bloco status
+            status_block = existing_data.get("status", [{}])[0]
+            status_block["completa_xl.py"] = status_completa_xl
+            existing_data["status"] = [status_block]
 
             # Regrava o JSON atualizado
             with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
                 json.dump(existing_data, f, indent=4, ensure_ascii=False)
 
             results.append("Relatório completo gerado com sucesso.")
-
 
         if not (switch1_active or switch2_active):
             return jsonify({"status": "error", "message": "Nenhum modo de execução selecionado."}), 400

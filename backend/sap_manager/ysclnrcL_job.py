@@ -68,43 +68,48 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 # Execução principal
 # ============================================================
 if __name__ == "__main__":
-    started_by_script = start_sap_manager()
-    start_connection()
-    session = get_sap_free_session()
+    try:
+        started_by_script = start_sap_manager()
+        start_connection()
+        session = get_sap_free_session()
 
-    # --- Lê requests.json ---
-    requests_data = []
-    path_data = []
+        # --- Lê requests.json ---
+        requests_data = []
+        path_data = []
 
-    if os.path.exists(json_path):
-        with open(json_path, "r", encoding="utf-8") as f:
-            try:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    requests_data = data.get("requests", [])
-                    path_data = data.get("paths", [])
-                elif isinstance(data, list):
-                    requests_data = data
-                    path_data = []
-                else:
-                    print("Formato inesperado no requests.json")
-            except json.JSONDecodeError as e:
-                print("Erro ao ler requests.json:", e)
-    else:
-        print(f"Arquivo não encontrado: {json_path}")
+        if os.path.exists(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                try:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        requests_data = data.get("requests", [])
+                        path_data = data.get("paths", [])
+                except json.JSONDecodeError as e:
+                    print("Erro ao ler requests.json:", e)
 
-    # --- Cria requisições ---
-    create_YSCLBLRIT_requests(
-        session=session,
-        init_date="01.01.2011",
-        init_time="08:00",
-        interval=15,
-        requests_data=requests_data
-    )
+        # --- Cria requisições ---
+        create_YSCLBLRIT_requests(
+            session=session,
+            init_date="01.01.2011",
+            init_time="08:00",
+            interval=15,
+            requests_data=requests_data
+        )
 
-    # --- Executa relatório adicional ---
-    reports_path = os.path.join(os.path.dirname(__file__), "..", "reports", "completa.py")
-    if os.path.exists(reports_path):
-        subprocess.run(["python", reports_path], check=True)
-    else:
-        print(f"Script de reports não encontrado: {reports_path}")
+        # --- Executa relatório adicional completa.py ---
+        reports_path = os.path.join(os.path.dirname(__file__), "..", "reports", "completa.py")
+        if os.path.exists(reports_path):
+            subprocess.run(["python", reports_path], check=True)
+        else:
+            print(f"Script de reports não encontrado: {reports_path}")
+
+        # ✅ Se chegou aqui, tudo ocorreu sem erros
+        status_done = "status_success"
+        print("===STATUS_DONE===" + status_done)
+
+
+    except Exception as e:
+        print("Ocorreu um erro na execução do ysclnrcl_job.py:", e)
+        status_done = "status_error"
+        print("===STATUS_DONE===" + status_done)
+
