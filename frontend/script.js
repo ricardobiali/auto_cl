@@ -192,7 +192,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 path6: document.querySelector("input[name='path6']")?.value || ""
             }];
 
-            const payload = { paths: paths, requests: data };
+            const switches = {
+                report_SAP: document.getElementById('switch1').checked,
+                completa: document.getElementById('switch2').checked,
+                reduzida: document.getElementById('switch3').checked,
+                diretos: document.getElementById('switch4').checked,
+                indiretos: document.getElementById('switch5').checked,
+                estoques: document.getElementById('switch6').checked
+            };
+
+            const payload = { paths: paths, requests: data, switches: switches };
 
             // Exibe avisos iniciais
             const mensagens = [];
@@ -227,8 +236,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
-            console.log("🔹 Linhas:", data);
-            console.log("🔹 Paths:", paths);
+            console.log(" Linhas:", data);
+            console.log(" Paths:", paths);
         });
     }
 

@@ -20,6 +20,8 @@ while root_dir.name != "auto_cl_prototype":
 BASE_DIR = os.path.dirname(__file__)
 REQUESTS_PATH = os.path.join(BASE_DIR, "requests.json")
 YSCLNRCL_PATH = fr"{root_dir}\backend\sap_manager\ysclnrcl_job.py"
+COMPLETA_XL_PATH = fr"{root_dir}\backend\reports\completa_xl.py"
+
 
 # Flask app
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
@@ -91,23 +93,53 @@ def save_requests():
         "requests": data.get("requests", [])
     }
 
-    # Salva o JSON
+    # Salva o JSON de entrada
     with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
         json.dump(final_data, f, indent=4, ensure_ascii=False)
 
+    # --- Identifica switches ativos ---
+    switches = data.get("switches", {})
+    switch1_active = switches.get("report_SAP", False)
+    switch2_active = switches.get("completa", False)
+
+    results = []
+
+    # --- Executa scripts conforme switches ---
     try:
-        completed_process = subprocess.run(
-            ["python", YSCLNRCL_PATH],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        print(completed_process.stdout)
-        return jsonify({"status": "success", "message": "Arquivo criado com sucesso!"})
+        if switch1_active:
+            completed_process_1 = subprocess.run(
+                ["python", YSCLNRCL_PATH],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            print(completed_process_1.stdout)
+            results.append("Job SAP executado com sucesso.")
+
+        if switch2_active:
+            completed_process_2 = subprocess.run(
+                ["python", COMPLETA_XL_PATH],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            print(completed_process_2.stdout)
+            results.append("Relatório completo gerado com sucesso.")
+
+        if not (switch1_active or switch2_active):
+            return jsonify({"status": "error", "message": "Nenhum modo de execução selecionado."}), 400
+
+        return jsonify({
+            "status": "success",
+            "message": " | ".join(results)
+        })
 
     except subprocess.CalledProcessError as e:
         print(e.stderr)
-        return jsonify({"status": "error", "message": f"Ocorreu um erro na execução do job:\n{e.stderr}"})
+        return jsonify({
+            "status": "error",
+            "message": f"Ocorreu um erro na execução:\n{e.stderr}"
+        }), 500
 
 # -----------------------------
 # Endpoint para consultar status do job

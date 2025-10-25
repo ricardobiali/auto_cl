@@ -1,27 +1,13 @@
 {
     "paths": [
         {
-            "path1": "teste",
-            "path2": "",
+            "path1": "",
+            "path2": "teste",
             "path3": "",
             "path4": "",
             "path5": "",
             "path6": ""
         }
     ],
-    "requests": [
-        {
-            "empresa": "1000",
-            "exercicio": "",
-            "trimestre": "",
-            "campo": "",
-            "fase": "",
-            "status": "",
-            "versao": "",
-            "secao": "",
-            "defprojeto": "",
-            "datainicio": "",
-            "bidround": ""
-        }
-    ]
+    "requests": []
 }
