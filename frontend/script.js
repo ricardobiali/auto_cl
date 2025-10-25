@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 if (status === "status_success") {
                                     atualizarAvisoFinal(
                                         '<i class="bi bi-check-circle-fill" style="color: green; font-size:1.1rem;"></i>',
-                                        "Arquivo gerado com sucesso, clique aqui para abrir"
+                                        "Arquivo(s) gerado(s) com sucesso"
                                     );
                                 } else if (status === "status_error") {
                                     atualizarAvisoFinal(
