@@ -1,6 +1,9 @@
+from pathlib import Path
 import sys
 import os
 import time
+import openpyxl
+from openpyxl.styles import numbers
 import pandas as pd
 import win32com.client
 
@@ -12,7 +15,7 @@ from backend.sap_manager.ko03 import executar_ko03
 from backend.sap_manager.ks13 import executar_ks13
 
 # --- Caminhos ---
-arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_UPWY_DP{JC3A2918927}_20244T_0_20250428162636.txt"
+arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt"
 pasta_destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 2 - Arquivos de Excel Reduzidos"
 os.makedirs(pasta_destino, exist_ok=True)
 
@@ -48,7 +51,7 @@ colunas_existentes = [c for c in colunas_desejadas if c in df.columns]
 colunas_faltando = [c for c in colunas_desejadas if c not in df.columns]
 
 if colunas_faltando:
-    print("⚠️ As seguintes colunas não foram encontradas no arquivo:")
+    print("As seguintes colunas não foram encontradas no arquivo:")
     for c in colunas_faltando:
         print("  -", c)
 
@@ -61,7 +64,7 @@ if "Doc custo Expurgado" in df_reduzido.columns:
     df_reduzido = df_reduzido[
         df_reduzido["Doc custo Expurgado"].astype(str).str.strip().str.upper() != "X"
     ]
-    print(f"🧹 {linhas_antes - len(df_reduzido)} linhas removidas (Doc custo Expurgado = 'X').")
+    print(f"{linhas_antes - len(df_reduzido)} linhas removidas (Doc custo Expurgado = 'X').")
 
 # --- Converter e formatar colunas numéricas no padrão brasileiro ---
 colunas_numericas = [
@@ -134,7 +137,7 @@ if "Tipo de Gasto" in df_reduzido.columns:
     )
     df_reduzido.loc[mask_estoque, "Tipo de Gasto"] = "Estoque"
 
-    print("✅ Coluna 'Tipo de Gasto' preenchida conforme regras de prioridade (Direto → Indireto → Estoque → Outros).")
+    print("Coluna 'Tipo de Gasto' preenchida conforme regras de prioridade (Direto → Indireto → Estoque → Outros).")
 
 # --- Preencher Bem/Serviço ---
 if "Material" in df_reduzido.columns and "Bem/Serviço" in df_reduzido.columns:
@@ -148,9 +151,9 @@ if "Material" in df_reduzido.columns and "Bem/Serviço" in df_reduzido.columns:
         material_str.str.match(r"^(10|11|12)"), "Bem/Serviço"
     ] = "Material"
 
-    print("✅ Coluna 'Bem/Serviço' preenchida conforme prefixos de 'Material'.")
+    print("Coluna 'Bem/Serviço' preenchida conforme prefixos de 'Material'.")
 else:
-    print("⚠️ Coluna 'Material' ou 'Bem/Serviço' não encontrada — nenhuma regra aplicada.")
+    print("Coluna 'Material' ou 'Bem/Serviço' não encontrada — nenhuma regra aplicada.")
 
 # Gerar lista única de contratos válidos (sem alterar o DataFrame)
 contratos_unicos = (
@@ -165,16 +168,16 @@ contratos_unicos = [
 ]
 
 # --- Inicialização SAP ---
-print("🚀 Iniciando SAP GUI...")
+print("Iniciando SAP GUI...")
 start_sap_manager()
 start_connection()
 session = get_sap_free_session()
 time.sleep(2)
 
 # --- Executa transação SAP - Contratos/Gerentes ---
-print("🔍 Executando consulta YSRELCONT...")
+print("Executando consulta YSRELCONT...")
 gerentes_por_contrato = executar_ysrelcont(session, contratos_unicos)
-print(f"✅ Consulta SAP concluída. {len(gerentes_por_contrato)} contratos encontrados.")
+print(f"Consulta SAP concluída. {len(gerentes_por_contrato)} contratos encontrados.")
 
 # --- Preenche coluna Contrato ---
 df_reduzido['Gestor do Contrato'] = (
@@ -202,17 +205,17 @@ objetos_e = [o for o in objetos_unicos if o.startswith("E")]
 objetos_or = [o for o in objetos_unicos if o.startswith("OR")]
 
 # --- Execução KO03 + KS13 ---
-print("🚀 Executando KO03 (ordens OR → centros E)...")
+print("Executando KO03 (ordens OR → centros E)...")
 or_para_e = executar_ko03(session, objetos_or)
-print(f"✅ {len(or_para_e)} ordens convertidas para centros de custo.")
+print(f"{len(or_para_e)} ordens convertidas para centros de custo.")
 
 # Monta lista definitiva de objetos E
 objetos_definitivos = objetos_e + list(or_para_e.values())
 objetos_definitivos = list(set(objetos_definitivos))  # remove duplicatas
 
-print("🚀 Executando KS13 (centros E → gerências responsáveis)...")
+print("Executando KS13 (centros E → gerências responsáveis)...")
 gerencias_por_objeto = executar_ks13(session, objetos_definitivos)
-print(f"✅ {len(gerencias_por_objeto)} gerências encontradas.")
+print(f"{len(gerencias_por_objeto)} gerências encontradas.")
 
 # --- Preenche coluna no DataFrame ---
 def mapear_gerencia(obj):
@@ -228,7 +231,7 @@ def mapear_gerencia(obj):
     return ""
 
 df_reduzido["Gerência responsável pelo objeto parceiro"] = df_reduzido["Objeto parceiro"].apply(mapear_gerencia)
-print("✅ Coluna 'Gerência responsável pelo objeto parceiro' preenchida com sucesso.")
+print("Coluna 'Gerência responsável pelo objeto parceiro' preenchida com sucesso.")
 # --- Fim do uso do SAP ---
 
 # --- Preencher coluna 'Disciplina' ---
@@ -328,6 +331,65 @@ df_reduzido = aplica_regras_disciplina(df_reduzido)
 nome_base = os.path.basename(arquivo_origem)
 nome_reduzido = nome_base.replace(".txt", "_Reduzida.txt")
 caminho_saida = os.path.join(pasta_destino, nome_reduzido)
+nome_excel = Path(nome_reduzido).stem + ".xlsx"
+arquivo_excel = os.path.join(pasta_destino, nome_excel)
 
-df_reduzido.to_csv(caminho_saida, sep=';', index=False, encoding='utf-8')
-print(f"✅ Arquivo reduzido criado com sucesso!\nDe: {arquivo_origem}\nPara: {caminho_saida}")
+try:
+    # Lê o CSV e salva em Excel
+    df = pd.read_csv(caminho_saida, sep=";", encoding="utf-8", low_memory=False, dtype=str)
+    
+    # Colunas que queremos converter para numérico (mesmo nome que você já usou)
+    colunas_formatar = [
+        "Valor/Moeda obj",
+        "Valor total em reais",
+        "Val suj cont loc R$",
+        "Valor cont local R$",
+        "Valor/moeda ACC",
+        "Estrangeiro $"
+    ]
+
+    # Converte as colunas formatadas em strings no padrão "1.234,56" para float 1234.56
+    for col in colunas_formatar:
+        if col in df.columns:
+            # substitui pontos de milhares e troca vírgula por ponto decimal
+            cleaned = (
+                df[col]
+                .astype(str)                    # garante string
+                .str.replace(".", "", regex=False)  # remove separador de milhar
+                .str.replace(",", ".", regex=False) # decimal point
+                .str.strip()
+            )
+            # converte para numérico (float) — valores inválidos virarão NaN
+            df[col] = pd.to_numeric(cleaned, errors="coerce")
+
+    # Salva o DataFrame (com colunas numéricas) direto em Excel
+    df.to_excel(arquivo_excel, index=False)
+
+    # Abre workbook e aplica formato numérico às colunas desejadas (se existirem)
+    wb = openpyxl.load_workbook(arquivo_excel)
+    ws = wb.active
+
+    # Mapeia cabeçalho -> índice (1-based)
+    header = {cell.value: idx for idx, cell in enumerate(ws[1], start=1)}
+
+    # Aplica formatação numérica (duas casas decimais)
+    for col in colunas_formatar:
+        if col in header:
+            col_idx = header[col]
+            for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+                for cell in row:
+                    # Se for valor numérico (float/int), aplica number_format
+                    if isinstance(cell.value, (int, float)):
+                        cell.number_format = '#,##0.00'
+
+    wb.save(arquivo_excel)
+
+    # Marca status de sucesso
+    status_done = "status_success"
+    print(status_done)
+
+except Exception as e:
+    # Caso dê erro, marca status de erro
+    status_done = "status_error"
+    print(f"Ocorreu um erro: {e}")
+    print(status_done)
