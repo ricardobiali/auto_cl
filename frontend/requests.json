@@ -9,5 +9,10 @@
             "path6": ""
         }
     ],
-    "requests": []
+    "requests": [],
+    "status": [
+        {
+            "completa_xl.py": "status_success"
+        }
+    ]
 }

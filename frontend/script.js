@@ -224,8 +224,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 const result = await response.json();
 
                 if (result.status === "success") {
-                    // Começa a checar status em loop
+                    // Continua mostrando o spinner enquanto o Python roda
                     checarStatus();
+
+                    // Verifica periodicamente o status no requests.json
+                    const verificarRequestsStatus = async () => {
+                        try {
+                            const resp = await fetch("http://127.0.0.1:8000/requests.json?_=" + new Date().getTime()); // evita cache
+                            if (!resp.ok) throw new Error("Falha ao ler requests.json");
+
+                            const data = await resp.json();
+                            const statusList = data.status || [];
+                            const completaStatus = statusList.find(s => s["completa_xl.py"]);
+
+                            if (completaStatus) {
+                                const status = completaStatus["completa_xl.py"];
+                                if (status === "status_success") {
+                                    atualizarAvisoFinal(
+                                        '<i class="bi bi-check-circle-fill" style="color: green; font-size:1.1rem;"></i>',
+                                        "Arquivo gerado com sucesso, clique aqui para abrir"
+                                    );
+                                } else if (status === "status_error") {
+                                    atualizarAvisoFinal(
+                                        '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
+                                        "Ocorreu um erro na operação, revise os dados e tente novamente. Se o problema persistir, entre em contato com o desenvolvedor."
+                                    );
+                                }
+                                return; // encerra o loop
+                            }
+
+                            // tenta de novo em 1s se ainda não existe status
+                            setTimeout(verificarRequestsStatus, 1000);
+                        } catch (err) {
+                            console.error("Erro ao verificar requests.json:", err);
+                            setTimeout(verificarRequestsStatus, 2000);
+                        }
+                    };
+
+                    verificarRequestsStatus();
                 } else {
                     throw new Error(result.message || "Erro desconhecido");
                 }

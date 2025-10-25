@@ -124,7 +124,27 @@ def save_requests():
                 check=True
             )
             print(completed_process_2.stdout)
+
+            # Extrai o status da saída do script
+            status_done = None
+            if "status_success" in completed_process_2.stdout:
+                status_done = "status_success"
+            elif "status_error" in completed_process_2.stdout:
+                status_done = "status_error"
+
+            # Lê o requests.json atual
+            with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                existing_data = json.load(f)
+
+            # Adiciona ou atualiza o bloco "status"
+            existing_data["status"] = [{"completa_xl.py": status_done}]
+
+            # Regrava o JSON atualizado
+            with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+                json.dump(existing_data, f, indent=4, ensure_ascii=False)
+
             results.append("Relatório completo gerado com sucesso.")
+
 
         if not (switch1_active or switch2_active):
             return jsonify({"status": "error", "message": "Nenhum modo de execução selecionado."}), 400

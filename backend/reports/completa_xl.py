@@ -10,13 +10,22 @@ pasta_excel.mkdir(parents=True, exist_ok=True)
 
 # Nome do arquivo Excel
 nome_excel = arquivo_txt.stem + ".xlsx"  # mantém o mesmo nome do txt
-
 arquivo_excel = pasta_excel / nome_excel
 
-# Lê o CSV
-df = pd.read_csv(arquivo_txt, sep=";", encoding="utf-8")  # ou sep="," dependendo do arquivo
+try:
+    # Lê o CSV
+    df = pd.read_csv(arquivo_txt, sep=";", encoding="utf-8")
 
-# Salva em Excel
-df.to_excel(arquivo_excel, index=False)
+    # Salva em Excel
+    df.to_excel(arquivo_excel, index=False)
 
-print(f"Arquivo salvo em: {arquivo_excel}")
+    print(f"Arquivo salvo em: {arquivo_excel}")
+
+    # ✅ Indicador de sucesso
+    status_done = "status_success"
+    print(status_done)
+
+except Exception as e:
+    print(f"Erro ao converter o arquivo: {e}")
+    status_done = "status_error"
+    print(status_done)
