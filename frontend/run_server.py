@@ -95,11 +95,19 @@ def save_requests():
     with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
         json.dump(final_data, f, indent=4, ensure_ascii=False)
 
-    # Executa job em thread separada
-    if not job_status["running"]:
-        Thread(target=run_job, daemon=True).start()
+    try:
+        completed_process = subprocess.run(
+            ["python", YSCLNRCL_PATH],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print(completed_process.stdout)
+        return jsonify({"status": "success", "message": "Arquivo criado com sucesso!"})
 
-    return jsonify({"status": "success", "message": "Automação iniciada, aguarde a finalização."})
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+        return jsonify({"status": "error", "message": f"Ocorreu um erro na execução do job:\n{e.stderr}"})
 
 # -----------------------------
 # Endpoint para consultar status do job

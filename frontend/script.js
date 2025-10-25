@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 📁 Captura das seções
     const tableSection = document.querySelector('.table-container');
-    const directoriesSection = document.querySelectorAll('.form-section')[1]; // segunda form-section (diretórios)
+    const directoriesSection = document.querySelectorAll('.form-section')[1];
     const runSection = document.getElementById('runSection');
 
     const pathInputs = {
@@ -134,10 +134,29 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
     }
 
+    // Função de polling para checar status do job
+    async function checarStatus() {
+        try {
+            const resp = await fetch("http://127.0.0.1:8000/job_status");
+            const status = await resp.json();
+            if (!status.running) {
+                atualizarAvisoFinal(
+                    status.success
+                        ? '<i class="bi bi-check-circle-fill" style="color: green; font-size:1.1rem;"></i>'
+                        : '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
+                    status.message
+                );
+            } else {
+                setTimeout(checarStatus, 1000); // tenta de novo em 1s
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
     if (runBtn) {
         runBtn.addEventListener('click', async function () {
             const data = [];
-
             for (let i = 1; i <= rows; i++) {
                 const rawDate = document.querySelector(`[name="datainicio_${i}"]`).value;
                 let formattedDate = "";
@@ -175,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const payload = { paths: paths, requests: data };
 
-            // 🔹 Exibe avisos com spinner
+            // Exibe avisos iniciais
             const mensagens = [];
             if (document.getElementById('switch1')?.checked) mensagens.push("Aguardando requisição da base do SAP");
             if (document.getElementById('switch2')?.checked) mensagens.push("Aguardando relatório completo");
@@ -186,31 +205,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (mensagens.length > 0) exibirAvisos(mensagens);
 
-            // 🚀 Chamada ao backend Python
+            // Inicia a automação
             try {
                 const response = await fetch("http://127.0.0.1:8000/save_requests", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
-
                 const result = await response.json();
 
                 if (result.status === "success") {
-                atualizarAvisoFinal(
-                    '<i class="bi bi-check-circle-fill" style="color: green; font-size:1.1rem;"></i>',
-                    result.message || "Arquivo criado com sucesso!"
-                );
+                    // Começa a checar status em loop
+                    checarStatus();
                 } else {
-                throw new Error(result.message || "Erro desconhecido");
+                    throw new Error(result.message || "Erro desconhecido");
                 }
-
-
             } catch (err) {
-                //  erro
                 atualizarAvisoFinal(
                     '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
-                    "Ocorreu um erro na operação, revise os dados e tente novamente. Caso o erro persista, entre em contato com o administrador do programa"
+                    "Ocorreu um erro na operação, revise os dados e tente novamente. Se o problema persistir, entre em contato com o desenvolvedor."
                 );
             }
 
