@@ -137,8 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Função de polling para checar status do job
     async function checarStatus() {
         try {
-            const resp = await fetch("http://127.0.0.1:8000/job_status");
-            const status = await resp.json();
+            const status = await eel.get_job_status()();
             if (!status.running) {
                 atualizarAvisoFinal(
                     status.success
@@ -211,69 +210,24 @@ document.addEventListener('DOMContentLoaded', function () {
             if (document.getElementById('switch4')?.checked) mensagens.push("Aguardando relatório de Gastos Diretos");
             if (document.getElementById('switch5')?.checked) mensagens.push("Aguardando relatório de Gastos Indiretos");
             if (document.getElementById('switch6')?.checked) mensagens.push("Aguardando relatório de Estoques");
-
             if (mensagens.length > 0) exibirAvisos(mensagens);
+            
+            // --- Salva requests.json ---
+            await eel.save_requests(payload)();
 
-            // Inicia a automação
-            try {
-                const response = await fetch("http://127.0.0.1:8000/save_requests", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-
-                if (result.status === "success") {
-                    // Continua mostrando o spinner enquanto o Python roda
-                    checarStatus();
-
-                    // Verifica periodicamente o status no requests.json
-                    const verificarRequestsStatus = async () => {
-                        try {
-                            const resp = await fetch("http://127.0.0.1:8000/requests.json?_=" + new Date().getTime()); // evita cache
-                            if (!resp.ok) throw new Error("Falha ao ler requests.json");
-
-                            const data = await resp.json();
-                            const statusList = data.status || [];
-                            const completaStatus = statusList.find(s => s["completa_xl.py"]);
-
-                            if (completaStatus) {
-                                const status = completaStatus["completa_xl.py"];
-                                if (status === "status_success") {
-                                    atualizarAvisoFinal(
-                                        '<i class="bi bi-check-circle-fill" style="color: green; font-size:1.1rem;"></i>',
-                                        "Arquivo(s) gerado(s) com sucesso"
-                                    );
-                                } else if (status === "status_error") {
-                                    atualizarAvisoFinal(
-                                        '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
-                                        "Ocorreu um erro na operação, revise os dados e tente novamente. Se o problema persistir, entre em contato com o desenvolvedor."
-                                    );
-                                }
-                                return; // encerra o loop
-                            }
-
-                            // tenta de novo em 1s se ainda não existe status
-                            setTimeout(verificarRequestsStatus, 1000);
-                        } catch (err) {
-                            console.error("Erro ao verificar requests.json:", err);
-                            setTimeout(verificarRequestsStatus, 2000);
-                        }
-                    };
-
-                    verificarRequestsStatus();
-                } else {
-                    throw new Error(result.message || "Erro desconhecido");
-                }
-            } catch (err) {
+            // --- Dispara o job Python ---
+            const result = await eel.start_job(switches, paths[0])();
+            if (result.status === "started") {
+                checarStatus();
+            } else if (result.status === "already_running") {
                 atualizarAvisoFinal(
-                    '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
-                    "Ocorreu um erro na operação, revise os dados e tente novamente. Se o problema persistir, entre em contato com o desenvolvedor."
+                    '<i class="bi bi-exclamation-triangle-fill" style="color: orange; font-size:1.1rem;"></i>',
+                    "Um job já está em execução. Aguarde ele terminar antes de iniciar outro."
                 );
             }
 
-            console.log(" Linhas:", data);
-            console.log(" Paths:", paths);
+            console.log("Linhas:", data);
+            console.log("Paths:", paths);
         });
     }
 

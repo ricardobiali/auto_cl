@@ -1,0 +1,142 @@
+import sys
+from pathlib import Path
+import eel
+import subprocess
+import json
+import os
+import threading
+import user_data
+import tkinter as tk
+from tkinter import filedialog
+
+# Configurações de caminhos
+BASE_DIR = Path(__file__).parent / "frontend"
+REQUESTS_PATH = BASE_DIR / "requests.json"
+
+ROOT_DIR = Path(__file__).parent
+YSCLNRCL_PATH = ROOT_DIR / "backend/sap_manager/ysclnrcl_job.py"
+COMPLETA_XL_PATH = ROOT_DIR / "backend/reports/completa_xl.py"
+REDUZIDA_PATH = ROOT_DIR / "backend/reports/reduzida.py"
+
+# -----------------------------
+# Status global do job
+# -----------------------------
+job_status = {
+    "running": False,
+    "success": None,
+    "message": ""
+}
+
+# -----------------------------
+# Inicializa Eel
+# -----------------------------
+eel.init(str(BASE_DIR))
+
+# -----------------------------
+# Função para rodar o job Python
+# -----------------------------
+def run_job(switches: dict, paths: dict):
+    global job_status
+    job_status["running"] = True
+    job_status["success"] = None
+    job_status["message"] = "Executando automação..."
+    
+    results = []
+
+    try:
+        # --- Job SAP ---
+        if switches.get("report_SAP"):
+            completed = subprocess.run(
+                [sys.executable, str(YSCLNRCL_PATH)],
+                capture_output=True, text=True, check=True
+            )
+            status_completa = "status_success" if "===STATUS_DONE===status_success" in completed.stdout else "status_error"
+            results.append("Job SAP executado com sucesso.")
+        # --- Completa XL ---
+        if switches.get("completa"):
+            completed = subprocess.run(
+                [sys.executable, str(COMPLETA_XL_PATH)],
+                capture_output=True, text=True, check=True
+            )
+            status_completa_xl = "status_success" if "status_success" in completed.stdout else "status_error"
+            results.append("Relatório COMPLETA_XL gerado com sucesso.")
+        # --- Reduzida ---
+        if switches.get("reduzida"):
+            completed = subprocess.run(
+                [sys.executable, str(REDUZIDA_PATH)],
+                capture_output=True, text=True, check=True
+            )
+            status_reduzida = "status_success" if "status_success" in completed.stdout else "status_error"
+            results.append("Relatório REDUZIDA gerado com sucesso.")
+
+        # Atualiza requests.json
+        if os.path.exists(REQUESTS_PATH):
+            with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                existing_data = json.load(f)
+        else:
+            existing_data = {"paths": [], "requests": [], "status": [{}]}
+
+        status_block = existing_data.get("status", [{}])[0]
+        if switches.get("report_SAP"): status_block["completa.py"] = status_completa
+        if switches.get("completa"): status_block["completa_xl.py"] = status_completa_xl
+        if switches.get("reduzida"): status_block["reduzida.py"] = status_reduzida
+        existing_data["status"] = [status_block]
+
+        with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(existing_data, f, indent=4, ensure_ascii=False)
+
+        job_status["success"] = True
+        job_status["message"] = " | ".join(results)
+
+    except subprocess.CalledProcessError as e:
+        job_status["success"] = False
+        job_status["message"] = f"Erro na execução do job:\n{e.stderr}"
+
+    finally:
+        job_status["running"] = False
+
+# -----------------------------
+# Funções expostas para JS
+# -----------------------------
+@eel.expose
+def start_job(switches, paths):
+    if not job_status["running"]:
+        threading.Thread(target=run_job, args=(switches, paths), daemon=True).start()
+        return {"status": "started"}
+    return {"status": "already_running"}
+
+@eel.expose
+def get_job_status():
+    return job_status
+
+@eel.expose
+def save_requests(data):
+    """Grava requests.json via front-end"""
+    with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    return {"status": "saved"}
+
+@eel.expose
+def read_requests_json():
+    """Lê requests.json e retorna como dict"""
+    if os.path.exists(REQUESTS_PATH):
+        with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"paths": [], "requests": [], "status": [{}]}
+
+@eel.expose
+def write_requests_json(data):
+    """Grava requests.json diretamente"""
+    with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    return {"status": "saved"}
+
+@eel.expose
+def get_welcome_name():
+    return user_data.full_name
+
+# -----------------------------
+# Inicializa app desktop
+# -----------------------------
+if __name__ == "__main__":
+    eel.start("index.html", size=(1200, 800), port=8000)

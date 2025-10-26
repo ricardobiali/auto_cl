@@ -1,0 +1,10 @@
+pandas
+openpyxl
+pathlib
+json
+shutil
+glob
+datetime
+flask_cors
+flask
+eel

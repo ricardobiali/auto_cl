@@ -10,6 +10,14 @@
         }
     ],
     "requests": [],
+    "switches": {
+        "report_SAP": false,
+        "completa": false,
+        "reduzida": true,
+        "diretos": false,
+        "indiretos": false,
+        "estoques": false
+    },
     "status": [
         {
             "reduzida.py": "status_success"
