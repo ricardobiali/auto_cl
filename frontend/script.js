@@ -1,4 +1,18 @@
 document.addEventListener('DOMContentLoaded', function () {
+    async function atualizarNomeUsuario() {
+        try {
+            const nome = await eel.get_welcome_name()();
+            const welcomeEl = document.querySelector('p.mb-0'); // seleciona o parágrafo existente
+            if (welcomeEl) {
+                welcomeEl.textContent = `Seja bem-vindo, ${nome}`;
+            }
+        } catch (err) {
+            console.error("Erro ao obter nome do usuário:", err);
+        }
+    }
+
+    atualizarNomeUsuario();
+
     const tbody = document.getElementById('rows-body');
     const rows = 20;
 

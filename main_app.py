@@ -5,7 +5,7 @@ import subprocess
 import json
 import os
 import threading
-import user_data
+from frontend import user_data
 import tkinter as tk
 from tkinter import filedialog
 import ctypes
