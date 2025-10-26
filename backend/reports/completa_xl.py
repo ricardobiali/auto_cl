@@ -25,12 +25,15 @@ with open(requests_path, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 # Extrai o path2 do bloco "paths"
+path_txtOrigin = ""
+path_txtOrigin = data["file_completa"]
+
 path2_value = ""
 if "paths" in data and len(data["paths"]) > 0:
     path2_value = data["paths"][0].get("path2", "")
 
 # Caminhos baseados no path2
-arquivo_txt = Path(r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_U33V_JV3A5118530_D_3_20240101_2024_1T_20251025_1316271000.txt")
+arquivo_txt = Path(path_txtOrigin)
 pasta_excel = Path(path2_value)
 
 # Garante que a pasta de destino existe

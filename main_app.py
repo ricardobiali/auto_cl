@@ -9,7 +9,6 @@ from frontend import user_data
 import tkinter as tk
 from tkinter import filedialog
 import ctypes
-from ctypes import wintypes
 
 # Configurações de caminhos
 BASE_DIR = Path(__file__).parent / "frontend"
@@ -54,6 +53,7 @@ def run_job(switches: dict, paths: dict):
             )
             status_completa = "status_success" if "===STATUS_DONE===status_success" in completed.stdout else "status_error"
             results.append("Job SAP executado com sucesso.")
+        
         # --- Completa XL ---
         if switches.get("completa"):
             completed = subprocess.run(
@@ -62,6 +62,7 @@ def run_job(switches: dict, paths: dict):
             )
             status_completa_xl = "status_success" if "status_success" in completed.stdout else "status_error"
             results.append("Relatório COMPLETA_XL gerado com sucesso.")
+        
         # --- Reduzida ---
         if switches.get("reduzida"):
             completed = subprocess.run(
@@ -147,11 +148,77 @@ def selecionar_diretorio():
         return ""
 
 @eel.expose
+def selecionar_arquivo():
+    """Abre um diálogo para selecionar arquivo e retorna o caminho completo"""
+    global tk_root
+    try:
+        if tk_root is None:
+            tk_root = tk.Tk()
+            tk_root.withdraw()
+
+
+        # --- Obtém handle (HWND) da janela principal Eel (janela Chromium) ---
+        try:
+            import win32gui
+            hwnd_main = win32gui.GetForegroundWindow()  # pega a janela ativa
+        except Exception:
+            hwnd_main = None
+
+        # --- Cria uma janela temporária associada ao HWND da aplicação principal ---
+        if hwnd_main:
+            try:
+                tk_root.wm_attributes("-toolwindow", True)
+                tk_root.wm_attributes("-topmost", True)
+                tk_root.lift()
+                tk_root.focus_force()
+
+                # Vincula a janela Tk à janela principal (modal)
+                ctypes.windll.user32.SetWindowLongW(
+                    tk_root.winfo_id(),
+                    -8,  # GWL_HWNDPARENT
+                    hwnd_main
+                )
+            except Exception as e:
+                print("Aviso: não foi possível vincular janela Tk ao app principal:", e)
+
+        # --- Exibe o diálogo ---
+        arquivo_selecionado = filedialog.askopenfilename(
+            parent=tk_root,
+            title="Selecione um diretório de armazenamento"
+        )
+        print("selecionar_diretorio ->", arquivo_selecionado)
+        return arquivo_selecionado if arquivo_selecionado else ""
+
+    except Exception as e:
+        print("Erro ao abrir diálogo de pasta:", e)
+        return ""
+
+@eel.expose
 def start_job(switches, paths):
-    if not job_status["running"]:
-        threading.Thread(target=run_job, args=(switches, paths), daemon=True).start()
-        return {"status": "started"}
-    return {"status": "already_running"}
+    if job_status["running"]:
+        return {"status": "already_running"}
+
+    # Se switch2 (completa) estiver ativo, pede arquivo antes de rodar
+    if switches.get("completa"):
+        file_path = selecionar_arquivo()
+        if not file_path:
+            return {"status": "cancelled", "message": "Execução cancelada pelo usuário."}
+
+        # Atualiza requests.json com o campo "file"
+        if os.path.exists(REQUESTS_PATH):
+            with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {"paths": [], "requests": [], "switches": switches, "status": [{}]}
+
+        data["file_completa"] = file_path
+
+        with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+    # Inicia o job em thread
+    threading.Thread(target=run_job, args=(switches, paths), daemon=True).start()
+    return {"status": "started"}
 
 @eel.expose
 def get_job_status():
