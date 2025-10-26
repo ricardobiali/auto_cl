@@ -231,5 +231,27 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+// Função para abrir diálogo de seleção de pasta
+async function selecionarDiretorio() {
+    try {
+        const caminho = await eel.selecionar_diretorio()();
+        return caminho;
+    } catch (error) {
+        console.error("Erro ao selecionar diretório:", error);
+        return "";
+    }
+}
+
+// Aplica o evento de clique no ícone de pasta
+document.querySelectorAll(".input-group-text").forEach(icon => {
+    icon.addEventListener("click", async (e) => {
+        const input = e.target.closest(".input-group").querySelector("input");
+        if (input) {
+            const caminho = await selecionarDiretorio();
+            if (caminho) input.value = caminho;
+        }
+    });
+});
+
     updateVisibility();
 });

@@ -8,6 +8,8 @@ import threading
 import user_data
 import tkinter as tk
 from tkinter import filedialog
+import ctypes
+from ctypes import wintypes
 
 # Configurações de caminhos
 BASE_DIR = Path(__file__).parent / "frontend"
@@ -98,6 +100,52 @@ def run_job(switches: dict, paths: dict):
 # -----------------------------
 # Funções expostas para JS
 # -----------------------------
+tk_root = None
+@eel.expose
+def selecionar_diretorio():
+    """Abre um diálogo para selecionar pasta e retorna o caminho"""
+    global tk_root
+    try:
+        if tk_root is None:
+            tk_root = tk.Tk()
+            tk_root.withdraw()  # cria apenas uma vez
+
+        # --- Obtém handle (HWND) da janela principal Eel (janela Chromium) ---
+        try:
+            import win32gui
+            hwnd_main = win32gui.GetForegroundWindow()  # pega a janela ativa
+        except Exception:
+            hwnd_main = None
+
+        # --- Cria uma janela temporária associada ao HWND da aplicação principal ---
+        if hwnd_main:
+            try:
+                tk_root.wm_attributes("-toolwindow", True)
+                tk_root.wm_attributes("-topmost", True)
+                tk_root.lift()
+                tk_root.focus_force()
+
+                # Vincula a janela Tk à janela principal (modal)
+                ctypes.windll.user32.SetWindowLongW(
+                    tk_root.winfo_id(),
+                    -8,  # GWL_HWNDPARENT
+                    hwnd_main
+                )
+            except Exception as e:
+                print("Aviso: não foi possível vincular janela Tk ao app principal:", e)
+
+        # --- Exibe o diálogo ---
+        folder_selected = filedialog.askdirectory(
+            parent=tk_root,
+            title="Selecione um diretório de armazenamento"
+        )
+        print("selecionar_diretorio ->", folder_selected)
+        return folder_selected if folder_selected else ""
+
+    except Exception as e:
+        print("Erro ao abrir diálogo de pasta:", e)
+        return ""
+
 @eel.expose
 def start_job(switches, paths):
     if not job_status["running"]:
