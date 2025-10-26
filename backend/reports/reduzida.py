@@ -37,12 +37,15 @@ with open(requests_path, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 # Extrai o path2 do bloco "paths"
+path_origin = ""
+path_origin = data["file_reduzida"]
+
 path3_value = ""
 if "paths" in data and len(data["paths"]) > 0:
     path3_value = data["paths"][0].get("path3", "")
 
 # --- Caminhos ---
-arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt"
+arquivo_origem = Path(path_origin)
 pasta_destino = Path(path3_value)
 os.makedirs(pasta_destino, exist_ok=True)
 

@@ -215,6 +215,20 @@ def start_job(switches, paths):
 
         with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
+    
+    # Se switch3 (reduzida) estiver ativo
+    if switches.get("reduzida"):
+        file_path = selecionar_arquivo()
+        if not file_path:
+            return {"status": "cancelled", "message": "Execução cancelada pelo usuário."}
+        if os.path.exists(REQUESTS_PATH):
+            with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {"paths": [], "requests": [], "switches": switches, "status": [{}]}
+        data["file_reduzida"] = file_path
+        with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
     # Inicia o job em thread
     threading.Thread(target=run_job, args=(switches, paths), daemon=True).start()
