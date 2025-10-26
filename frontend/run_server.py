@@ -21,6 +21,7 @@ BASE_DIR = os.path.dirname(__file__)
 REQUESTS_PATH = os.path.join(BASE_DIR, "requests.json")
 YSCLNRCL_PATH = fr"{root_dir}\backend\sap_manager\ysclnrcl_job.py"
 COMPLETA_XL_PATH = fr"{root_dir}\backend\reports\completa_xl.py"
+REDUZIDA_PATH = fr"{root_dir}\backend\reports\reduzida.py"
 
 # Flask app
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
@@ -100,6 +101,7 @@ def save_requests():
     switches = data.get("switches", {})
     switch1_active = switches.get("report_SAP", False)
     switch2_active = switches.get("completa", False)
+    switch3_active = switches.get("reduzida", False)
 
     results = []
 
@@ -113,12 +115,7 @@ def save_requests():
                 check=True
             )
             print(completed_process_1.stdout)
-
-            # Extrai o status da saída do script
-            if "===STATUS_DONE===status_success" in completed_process_1.stdout:
-                status_completa = "status_success"
-            elif "===STATUS_DONE===status_error" in completed_process_1.stdout:
-                status_completa = "status_error"
+            status_completa = "status_success" if "===STATUS_DONE===status_success" in completed_process_1.stdout else "status_error"
 
             # Lê o requests.json atual
             if os.path.exists(REQUESTS_PATH):
@@ -147,8 +144,6 @@ def save_requests():
                 check=True
             )
             print(completed_process_2.stdout)
-
-            # Extrai o status da saída do script
             status_completa_xl = "status_success" if "status_success" in completed_process_2.stdout else "status_error"
 
             # Lê o requests.json atual
@@ -169,7 +164,36 @@ def save_requests():
 
             results.append("Relatório completo gerado com sucesso.")
 
-        if not (switch1_active or switch2_active):
+        # --- Executa REDUZIDA ---
+        if switch3_active:
+            path3 = data.get("path3", REDUZIDA_PATH)  # pega do front-end ou usa padrão
+            completed_process_3 = subprocess.run(
+                ["python", REDUZIDA_PATH],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            print(completed_process_3.stdout)
+            status_reduzida = "status_success" if "status_success" in completed_process_3.stdout else "status_error"
+
+            # Atualiza status e path3 no JSON
+            if os.path.exists(REQUESTS_PATH):
+                with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                    existing_data = json.load(f)
+            else:
+                existing_data = {"paths": [], "requests": []}
+
+            status_block = existing_data.get("status", [{}])[0]
+            status_block["reduzida.py"] = status_reduzida
+            existing_data["status"] = [status_block]
+
+            # Regrava o JSON atualizado
+            with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+                json.dump(existing_data, f, indent=4, ensure_ascii=False)
+
+            results.append("Relatório REDUZIDA gerado com sucesso.")
+
+        if not (switch1_active or switch2_active or switch3_active):
             return jsonify({"status": "error", "message": "Nenhum modo de execução selecionado."}), 400
 
         return jsonify({

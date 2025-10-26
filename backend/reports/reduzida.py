@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import sys
 import os
@@ -14,9 +15,35 @@ from backend.sap_manager.ysrelcont import executar_ysrelcont
 from backend.sap_manager.ko03 import executar_ko03
 from backend.sap_manager.ks13 import executar_ks13
 
+# Caminho atual do script
+current_dir = Path(__file__).resolve()
+username = os.getlogin()
+
+# Sobe até encontrar a pasta 'auto_cl_prototype'
+root_dir = current_dir
+while root_dir.name != "auto_cl_prototype":
+    if root_dir.parent == root_dir:
+        raise FileNotFoundError("Pasta 'auto_cl_prototype' não encontrada.")
+    root_dir = root_dir.parent
+
+# Caminho do requests.json
+requests_path = os.path.join(
+    fr"{root_dir}\frontend",
+    "requests.json"
+)
+
+# Lê o arquivo JSON
+with open(requests_path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+# Extrai o path2 do bloco "paths"
+path3_value = ""
+if "paths" in data and len(data["paths"]) > 0:
+    path3_value = data["paths"][0].get("path3", "")
+
 # --- Caminhos ---
 arquivo_origem = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 0 - Arquivos de Texto do SAP\RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt"
-pasta_destino = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\Auto_CL\Fase 2 - Arquivos de Excel Reduzidos"
+pasta_destino = Path(path3_value)
 os.makedirs(pasta_destino, exist_ok=True)
 
 # --- Lê o arquivo fonte ---
@@ -137,7 +164,7 @@ if "Tipo de Gasto" in df_reduzido.columns:
     )
     df_reduzido.loc[mask_estoque, "Tipo de Gasto"] = "Estoque"
 
-    print("Coluna 'Tipo de Gasto' preenchida conforme regras de prioridade (Direto → Indireto → Estoque → Outros).")
+    print("Coluna 'Tipo de Gasto' preenchida conforme regras de prioridade (Direto Indireto Estoque Outros).")
 
 # --- Preencher Bem/Serviço ---
 if "Material" in df_reduzido.columns and "Bem/Serviço" in df_reduzido.columns:
@@ -205,7 +232,7 @@ objetos_e = [o for o in objetos_unicos if o.startswith("E")]
 objetos_or = [o for o in objetos_unicos if o.startswith("OR")]
 
 # --- Execução KO03 + KS13 ---
-print("Executando KO03 (ordens OR → centros E)...")
+print("Executando KO03 (ordens OR - centros E)...")
 or_para_e = executar_ko03(session, objetos_or)
 print(f"{len(or_para_e)} ordens convertidas para centros de custo.")
 
@@ -213,7 +240,7 @@ print(f"{len(or_para_e)} ordens convertidas para centros de custo.")
 objetos_definitivos = objetos_e + list(or_para_e.values())
 objetos_definitivos = list(set(objetos_definitivos))  # remove duplicatas
 
-print("Executando KS13 (centros E → gerências responsáveis)...")
+print("Executando KS13 (centros E - gerências responsáveis)...")
 gerencias_por_objeto = executar_ks13(session, objetos_definitivos)
 print(f"{len(gerencias_por_objeto)} gerências encontradas.")
 
@@ -333,6 +360,9 @@ nome_reduzido = nome_base.replace(".txt", "_Reduzida.txt")
 caminho_saida = os.path.join(pasta_destino, nome_reduzido)
 nome_excel = Path(nome_reduzido).stem + ".xlsx"
 arquivo_excel = os.path.join(pasta_destino, nome_excel)
+
+# ✅ Salva o DataFrame reduzido antes de tentar reabrir
+df_reduzido.to_csv(caminho_saida, sep=";", index=False, encoding="utf-8")
 
 try:
     # Lê o CSV e salva em Excel
