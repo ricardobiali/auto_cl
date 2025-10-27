@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function atualizarNomeUsuario() {
         try {
             const nome = await eel.get_welcome_name()();
-            const welcomeEl = document.querySelector('p.mb-0'); // seleciona o parágrafo existente
+            const welcomeEl = document.querySelector('p.mb-0'); 
             if (welcomeEl) {
                 welcomeEl.textContent = `Seja bem-vindo, ${nome}`;
             }
@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 📁 Captura das seções
+    const optionsSection = document.querySelectorAll('.form-section')[0];
     const tableSection = document.querySelector('.table-container');
     const directoriesSection = document.querySelectorAll('.form-section')[1];
     const runSection = document.getElementById('runSection');
@@ -150,6 +151,18 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
     }
 
+    // Oculta todas seções exceto avisos e botão cancelar
+    function hideSectionsOnRun() {
+        const sectionsToHide = [
+            optionsSection,
+            tableSection,
+            directoriesSection,
+            runSection,
+            ...Object.values(pathInputs)
+        ];
+        sectionsToHide.forEach(el => toggleFade(el, false));
+    }
+
     // Função de polling para checar status do job
     async function checarStatus() {
         try {
@@ -228,6 +241,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (document.getElementById('switch5')?.checked) mensagens.push("Aguardando relatório de Gastos Indiretos");
             if (document.getElementById('switch6')?.checked) mensagens.push("Aguardando relatório de Estoques");
             if (mensagens.length > 0) exibirAvisos(mensagens);
+
+            hideSectionsOnRun();
             
             toggleFade(cancelSection, true);
 
