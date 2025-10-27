@@ -1,27 +1,35 @@
 {
     "paths": [
         {
-            "path1": "",
+            "path1": "C:/Users/U33V/OneDrive - PETROBRAS/Desktop/Auto_CL/Fase 0 - Arquivos de Texto do SAP",
             "path2": "",
-            "path3": "C:/Users/U33V/OneDrive - PETROBRAS/Desktop/Auto_CL/Fase 2 - Arquivos de Excel Reduzidos",
+            "path3": "",
             "path4": "",
             "path5": "",
             "path6": ""
         }
     ],
-    "requests": [],
+    "requests": [
+        {
+            "empresa": "1000",
+            "exercicio": "2024",
+            "trimestre": "1",
+            "campo": "",
+            "fase": "D",
+            "status": "3",
+            "versao": "2",
+            "secao": "ANP_0901",
+            "defprojeto": "JV3A5118530",
+            "datainicio": "01012024",
+            "bidround": "002"
+        }
+    ],
     "switches": {
-        "report_SAP": false,
+        "report_SAP": true,
         "completa": false,
-        "reduzida": true,
+        "reduzida": false,
         "diretos": false,
         "indiretos": false,
         "estoques": false
-    },
-    "file_reduzida": "C:/Users/U33V/OneDrive - PETROBRAS/Desktop/Auto_CL/Fase 0 - Arquivos de Texto do SAP/RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt",
-    "status": [
-        {
-            "reduzida.py": "status_success"
-        }
-    ]
+    }
 }

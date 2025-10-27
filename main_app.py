@@ -51,7 +51,7 @@ def run_job(switches: dict, paths: dict):
                 [sys.executable, str(YSCLNRCL_PATH)],
                 capture_output=True, text=True, check=True
             )
-            status_completa = "status_success" if "===STATUS_DONE===status_success" in completed.stdout else "status_error"
+            status_completa = "status_success" if "status_success" in completed.stdout else "status_error"
             results.append("Job SAP executado com sucesso.")
         
         # --- Completa XL ---
@@ -80,7 +80,7 @@ def run_job(switches: dict, paths: dict):
             existing_data = {"paths": [], "requests": [], "status": [{}]}
 
         status_block = existing_data.get("status", [{}])[0]
-        if switches.get("report_SAP"): status_block["completa.py"] = status_completa
+        if switches.get("report_SAP"): status_block["ysclnrcl_job.py"] = status_completa
         if switches.get("completa"): status_block["completa_xl.py"] = status_completa_xl
         if switches.get("reduzida"): status_block["reduzida.py"] = status_reduzida
         existing_data["status"] = [status_block]
@@ -156,7 +156,6 @@ def selecionar_arquivo():
             tk_root = tk.Tk()
             tk_root.withdraw()
 
-
         # --- Obtém handle (HWND) da janela principal Eel (janela Chromium) ---
         try:
             import win32gui
@@ -204,7 +203,7 @@ def start_job(switches, paths):
         if not file_path:
             return {"status": "cancelled", "message": "Execução cancelada pelo usuário."}
 
-        # Atualiza requests.json com o campo "file"
+        # Atualiza requests.json com o campo "file_completa"
         if os.path.exists(REQUESTS_PATH):
             with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -268,4 +267,9 @@ def get_welcome_name():
 # Inicializa app desktop
 # -----------------------------
 if __name__ == "__main__":
-    eel.start("index.html", size=(1200, 800), port=8000)
+    eel.start(
+        "index.html",
+        port=8000,
+        size=(1200, 800),
+        cmdline_args=['--start-maximized']  # abre maximizado
+    )

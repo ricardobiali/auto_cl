@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
         # ✅ Se chegou aqui, tudo ocorreu sem erros
         status_done = "status_success"
-        print("===STATUS_DONE===" + status_done)
+        print(status_done)
 
 
     except Exception as e:
