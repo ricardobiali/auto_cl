@@ -59,6 +59,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const tableSection = document.querySelector('.table-container');
     const directoriesSection = document.querySelectorAll('.form-section')[1];
     const runSection = document.getElementById('runSection');
+    const cancelSection = document.getElementById('cancelSection'); 
+    const cancelBtn = document.getElementById('cancelBtn');
 
     const pathInputs = {
         path1: document.querySelector('[name="path1"]').closest('.mb-3'),
@@ -69,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
         path6: document.querySelector('[name="path6"]').closest('.mb-3')
     };
 
-    [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
+    [tableSection, directoriesSection, runSection, cancelSection, ...Object.values(pathInputs)].forEach(el => {
         if (!el) return;
         el.classList.add('fade-toggle');
     });
@@ -90,8 +92,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }, duration + 20);
         }
     }
-
-    [tableSection, directoriesSection, runSection, ...Object.values(pathInputs)].forEach(el => {
+    
+    [tableSection, directoriesSection, runSection, cancelSection, ...Object.values(pathInputs)].forEach(el => {
         if (!el) return;
         if (!el.classList.contains('show')) {
             el.style.display = 'none';
@@ -159,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
                     status.message
                 );
+                toggleFade(cancelSection, false);
             } else {
                 setTimeout(checarStatus, 1000); // tenta de novo em 1s
             }
@@ -226,6 +229,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (document.getElementById('switch6')?.checked) mensagens.push("Aguardando relatório de Estoques");
             if (mensagens.length > 0) exibirAvisos(mensagens);
             
+            toggleFade(cancelSection, true);
+
             // --- Salva requests.json ---
             await eel.save_requests(payload)();
 
@@ -242,6 +247,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
             console.log("Linhas:", data);
             console.log("Paths:", paths);
+        });
+    }
+
+    // Ação do botão Cancelar
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', async () => {
+            try {
+                atualizarAvisoFinal(
+                    '<i class="bi bi-exclamation-octagon-fill" style="color: orange; font-size:1.1rem;"></i>',
+                    'Cancelando automação...'
+                );
+
+                const res = await eel.cancel_job()();
+                console.log("Cancelamento retornado:", res);
+
+                // Oculta botão imediatamente
+                toggleFade(cancelSection, false);
+
+                // Dá um pequeno delay para mostrar o aviso e recarregar a tela
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+
+            } catch (err) {
+                console.error("Erro ao cancelar:", err);
+            }
         });
     }
 

@@ -25,17 +25,12 @@
         }
     ],
     "switches": {
-        "report_SAP": false,
+        "report_SAP": true,
         "completa": false,
         "reduzida": true,
         "diretos": false,
         "indiretos": false,
         "estoques": false
     },
-    "file_reduzida": "C:/Users/U33V/OneDrive - PETROBRAS/Desktop/Auto_CL/Fase 0 - Arquivos de Texto do SAP/RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt",
-    "status": [
-        {
-            "reduzida.py": "status_success"
-        }
-    ]
+    "file_reduzida": "C:/Users/U33V/OneDrive - PETROBRAS/Desktop/Auto_CL/Fase 0 - Arquivos de Texto do SAP/RGT_RCL.CSV_UPWY_JC3A2918020_D__20240101_2024_4T_20250428_171814.txt"
 }

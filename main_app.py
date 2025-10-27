@@ -9,6 +9,9 @@ from frontend import user_data
 import tkinter as tk
 from tkinter import filedialog
 import ctypes
+import psutil
+
+active_processes = []
 
 # Configurações de caminhos
 BASE_DIR = Path(__file__).parent / "frontend"
@@ -53,6 +56,7 @@ def run_job(switches: dict, paths: dict):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT
             )
+            active_processes.append(completed)
 
             stdout_total = ""
             for line in completed.stdout:
@@ -245,6 +249,35 @@ def start_job(switches, paths):
 @eel.expose
 def get_job_status():
     return job_status
+
+@eel.expose
+def cancel_job():
+    """Cancela o job em execução e força recarregamento da interface"""
+    global job_status, active_processes
+
+    try:
+        if active_processes:
+            for proc in active_processes:
+                if proc and proc.poll() is None:
+                    proc.terminate()
+            active_processes = []  # limpa a lista
+
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                if proc.info['name'] and proc.info['name'].lower() in ['saplogon.exe', 'sapgui.exe']:
+                    print(f"Encerrando processo SAP: {proc.info['name']} (PID {proc.info['pid']})")
+                    proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        job_status["running"] = False
+        job_status["success"] = None
+        job_status["message"] = "Job cancelado manualmente."
+
+        print("Job cancelado manualmente (SAP encerrado, se aberto).")
+
+    except Exception as e:
+        print("Aviso: não foi possível encerrar subprocessos:", e)
 
 @eel.expose
 def save_requests(data):
