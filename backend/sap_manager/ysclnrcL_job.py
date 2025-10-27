@@ -1,12 +1,16 @@
+import glob
 from pathlib import Path
+import shutil
+import sys
+import time
 from sap_connect import get_sap_free_session, start_sap_manager, start_connection, close_sap_manager
 from datetime import datetime, timedelta
-import subprocess
 import os
 import json
 
 # Caminho atual do script
 current_dir = Path(__file__).resolve()
+username = os.getlogin()
 
 # Sobe até encontrar a pasta 'auto_cl_prototype'
 root_dir = current_dir
@@ -64,9 +68,7 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 
         print(f"Requisição {i} agendada para {str_date_plan} às {str_time_plan}")
 
-# ============================================================
 # Execução principal
-# ============================================================
 if __name__ == "__main__":
     try:
         started_by_script = start_sap_manager()
@@ -96,20 +98,107 @@ if __name__ == "__main__":
             requests_data=requests_data
         )
 
-        # --- Executa relatório adicional completa.py ---
-        reports_path = os.path.join(os.path.dirname(__file__), "..", "reports", "completa.py")
-        if os.path.exists(reports_path):
-            subprocess.run(["python", reports_path], check=True)
-        else:
-            print(f"Script de reports não encontrado: {reports_path}")
+        try:
+            # # Caminho do requests.json
+            requests_data = os.path.join(
+                fr"{root_dir}\frontend",
+                "requests.json"
+            )
 
-        # ✅ Se chegou aqui, tudo ocorreu sem erros
-        status_done = "status_success"
-        print(status_done)
+            # Valores padrão
+            defprojeto = fase = status = datainicio = exercicio = trimestre = path1 = "DEFAULT"
 
+            # Lê o arquivo requests.json e extrai dados do primeiro item
+            if os.path.exists(requests_data):
+                with open(requests_data, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    requests_list = data.get("requests", [])
+                    paths_list = data.get("paths", [])
+
+                    if requests_list and isinstance(requests_list, list):
+                        first = requests_list[0]
+                        defprojeto = first.get("defprojeto", "").strip()
+                        fase = first.get("fase", "").strip()
+                        status = first.get("status", "").strip()
+                        datainicio = first.get("datainicio", "").strip()
+                        exercicio = first.get("exercicio", "").strip()
+                        trimestre = first.get("trimestre", "").strip()
+
+                        # 🗓️ Converte ddmmaaaa → aaaammdd
+                        if len(datainicio) == 8 and datainicio.isdigit():
+                            datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
+                        else:
+                            print(f"Formato inesperado de datainicio: {datainicio}")
+
+                    else:
+                        print("Nenhum registro em 'requests', usando valores padrão.")
+
+                    # Lê path1 do primeiro item em 'paths', se existir
+                    if paths_list and isinstance(paths_list, list):
+                        path1 = paths_list[0].get("path1", "").strip()
+                        if not path1:
+                            print("'path1' vazio no requests.json, usando padrão.")
+                    else:
+                        print("Nenhum registro em 'paths', usando padrão.")
+            else:
+                print(f"Arquivo requests.json não encontrado em {requests_data}, usando valores padrão.")
+
+            # Caminhos de origem e destino
+            origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
+            destino = path1  # ✅ Agora usa path1 em vez de caminho fixo
+
+            # 📅 Data corrente no formato aaaammdd
+            datacorrente = datetime.now().strftime("%Y%m%d")
+
+            # Padrão dinâmico de arquivo
+            padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+
+            # Intervalo entre verificações (em segundos)
+            intervalo_busca = 120
+
+            # --- Abre SM37 e marca PRELIM ---
+            session.findById("wnd[0]/tbar[0]/okcd").text = "/nsm37"
+            session.findById("wnd[0]").sendVKey(0)
+            session.findById("wnd[0]/usr/chkBTCH2170-PRELIM").selected = True
+            session.findById("wnd[0]/tbar[1]/btn[8]").press()
+
+            print(f"Iniciando monitoramento da pasta:\n   {origem}")
+            print(f"Aguardando arquivo com padrão: {padrao}\n")
+
+            while True:
+                arquivos = glob.glob(os.path.join(origem, padrao))
+                session.findById("wnd[0]/tbar[1]/btn[8]").press()
+
+                if arquivos:
+                    for arquivo in arquivos:
+                        nome_arquivo = os.path.basename(arquivo)
+                        destino_final = os.path.join(destino, nome_arquivo)
+                        try:
+                            shutil.move(arquivo, destino_final)
+                            print(f"\n [{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
+                            print(f"   ➜ {nome_arquivo}")
+                            print(f"   ➜ De: {origem}")
+                            print(f"   ➜ Para: {destino_final}")
+                            print("\nEncerrando monitoramento.")
+                            
+                            # ✅ Marca status de sucesso
+                            status_done = "status_success"
+                            print(status_done)
+                            os._exit(0)
+                        except Exception as e:
+                            status_done = "status_error"
+                            print(status_done)
+                            os._exit(0)
+                            time.sleep(intervalo_busca)
+                else:
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Arquivo ainda não encontrado... tentando novamente em {intervalo_busca} segundos.")
+                    time.sleep(intervalo_busca)
+
+        except Exception as e:
+            print(f"Erro geral durante a execução: {e}")
+            status_done = "status_error"
 
     except Exception as e:
         print("Ocorreu um erro na execução do ysclnrcl_job.py:", e)
         status_done = "status_error"
-        print("===STATUS_DONE===" + status_done)
 

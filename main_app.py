@@ -47,11 +47,20 @@ def run_job(switches: dict, paths: dict):
     try:
         # --- Job SAP ---
         if switches.get("report_SAP"):
-            completed = subprocess.run(
+            completed = subprocess.Popen(
                 [sys.executable, str(YSCLNRCL_PATH)],
-                capture_output=True, text=True, check=True
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT
             )
-            status_completa = "status_success" if "status_success" in completed.stdout else "status_error"
+
+            stdout_total = ""
+            for line in completed.stdout:
+                print(line, end="")  # imprime em tempo real
+                stdout_total += line
+
+            completed.wait()
+            status_completa = "status_success" if "status_success" in stdout_total else "status_error"
             results.append("Job SAP executado com sucesso.")
         
         # --- Completa XL ---
