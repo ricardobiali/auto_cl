@@ -201,4 +201,3 @@ if __name__ == "__main__":
     except Exception as e:
         print("Ocorreu um erro na execução do ysclnrcl_job.py:", e)
         status_done = "status_error"
-
