@@ -174,7 +174,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
                     status.message
                 );
-                toggleFade(cancelSection, false);
+                // toggleFade(cancelSection, false);
+                // Alterar texto do botão
+                cancelBtn.textContent = "Reiniciar";
+                cancelBtn.onclick = () => window.location.reload();
             } else {
                 setTimeout(checarStatus, 1000); // tenta de novo em 1s
             }
@@ -278,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log("Cancelamento retornado:", res);
 
                 // Oculta botão imediatamente
-                toggleFade(cancelSection, false);
+                // toggleFade(cancelSection, false);
 
                 // Dá um pequeno delay para mostrar o aviso e recarregar a tela
                 setTimeout(() => {
