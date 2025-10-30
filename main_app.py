@@ -210,6 +210,13 @@ def start_job(switches, paths):
             if not file_completa:
                 return {"status": "cancelled"}
             paths["file_completa"] = file_completa
+    
+    if switches.get("reduzida") and not switches.get("report_SAP") and not switches.get("completa"):
+        if not paths.get("file_reduzida"):
+            file_reduzida = selecionar_arquivo()
+            if not file_reduzida:
+                return {"status": "cancelled"}
+            paths["file_reduzida"] = file_reduzida
 
     threading.Thread(target=_run_sequenced_job, args=(switches, paths), daemon=True).start()
     return {"status": "started"}
@@ -270,12 +277,15 @@ def _run_sequenced_job(switches, paths):
             if destino_final:
                 file_reduzida = destino_final
             else:
-                job_status.update({
-                    "running": False,
-                    "success": False,
-                    "message": "Execução abortada: destino_final não retornado (SAP/Completa)."
-                })
-                return
+                if paths.get("file_reduzida"):
+                    file_reduzida = paths.get("file_reduzida")
+                else:
+                    job_status.update({
+                        "running": False,
+                        "success": False,
+                        "message": "Execução cancelada: nenhum arquivo selecionado para Reduzida."
+                    })
+                    return
 
         # Lê ou cria o requests.json
         if os.path.exists(REQUESTS_PATH):
