@@ -256,15 +256,19 @@ def _run_sequenced_job(switches, paths):
 
     # 3️⃣ Switch3 - Reduzida
     if switches.get("reduzida"):
-        if destino_final:
+        # Se SAP também estiver ativo, usar o mesmo destino_final e não abrir seleção
+        if switches.get("report_SAP") and destino_final:
             file_reduzida = destino_final
         else:
-            job_status.update({
-                "running": False,
-                "success": False,
-                "message": "Execução abortada: destino_final não retornado (SAP/Completa)."
-            })
-            return
+            if destino_final:
+                file_reduzida = destino_final
+            else:
+                job_status.update({
+                    "running": False,
+                    "success": False,
+                    "message": "Execução abortada: destino_final não retornado (SAP/Completa)."
+                })
+                return
 
         # Lê ou cria o requests.json
         if os.path.exists(REQUESTS_PATH):
