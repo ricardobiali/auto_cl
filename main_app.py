@@ -203,6 +203,13 @@ def selecionar_arquivo():
 def start_job(switches, paths):
     if job_status["running"]:
         return {"status": "already_running"}
+    
+    if switches.get("completa") and not switches.get("report_SAP"):
+        if not paths.get("file_completa"):
+            file_completa = selecionar_arquivo()
+            if not file_completa:
+                return {"status": "cancelled"}
+            paths["file_completa"] = file_completa
 
     threading.Thread(target=_run_sequenced_job, args=(switches, paths), daemon=True).start()
     return {"status": "started"}
@@ -230,6 +237,8 @@ def _run_sequenced_job(switches, paths):
     if switches.get("completa"):
         if destino_final:
             file_completa = destino_final
+        elif paths.get("file_completa"):
+            file_completa = paths.get("file_completa")
         else:
             job_status.update({
                 "running": False,
@@ -238,27 +247,25 @@ def _run_sequenced_job(switches, paths):
             })
             return
 
-        # Lê ou cria o requests.json
         if os.path.exists(REQUESTS_PATH):
             with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
         else:
             data = {"paths": [], "requests": [], "status": [{}]}
 
-        # Atualiza e grava
         data["file_completa"] = file_completa
         with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
-        # Executa o job completa com o destino_final vindo do SAP
         run_job({"completa": True}, paths)
         destino_final = file_completa
 
     # 3️⃣ Switch3 - Reduzida
     if switches.get("reduzida"):
-        # Se SAP também estiver ativo, usar o mesmo destino_final e não abrir seleção
         if switches.get("report_SAP") and destino_final:
             file_reduzida = destino_final
+        elif switches.get("completa") and file_completa:
+            file_reduzida = file_completa
         else:
             if destino_final:
                 file_reduzida = destino_final
