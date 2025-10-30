@@ -124,7 +124,7 @@ if __name__ == "__main__":
                         exercicio = first.get("exercicio", "").strip()
                         trimestre = first.get("trimestre", "").strip()
 
-                        # 🗓️ Converte ddmmaaaa → aaaammdd
+                        # Converte ddmmaaaa → aaaammdd
                         if len(datainicio) == 8 and datainicio.isdigit():
                             datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
                         else:
@@ -145,9 +145,9 @@ if __name__ == "__main__":
 
             # Caminhos de origem e destino
             origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
-            destino = path1  # ✅ Agora usa path1 em vez de caminho fixo
+            destino = path1  # Agora usa path1 em vez de caminho fixo
 
-            # 📅 Data corrente no formato aaaammdd
+            # Data corrente no formato aaaammdd
             datacorrente = datetime.now().strftime("%Y%m%d")
 
             # Padrão dinâmico de arquivo
@@ -176,16 +176,21 @@ if __name__ == "__main__":
                         try:
                             shutil.move(arquivo, destino_final)
                             print(f"\n [{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
-                            print(f"   ➜ {nome_arquivo}")
-                            print(f"   ➜ De: {origem}")
-                            print(f"   ➜ Para: {destino_final}")
+                            print(f"   {nome_arquivo}")
+                            print(f"   De: {origem}")
+                            print(f"   Para: {destino_final}")
                             print("\nEncerrando monitoramento.")
                             
-                            # ✅ Marca status de sucesso
+                            print(f"DESTINO_FINAL: {destino_final}")
                             status_done = "status_success"
                             print(status_done)
                             os._exit(0)
                         except Exception as e:
+                            import traceback
+                            print(f"Erro no loop de monitoramento: {e}", flush=True)
+                            print(traceback.format_exc(), flush=True)
+                            status_done = "status_error"
+
                             status_done = "status_error"
                             print(status_done)
                             os._exit(0)

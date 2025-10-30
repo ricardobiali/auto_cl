@@ -174,7 +174,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
                     status.message
                 );
-                // toggleFade(cancelSection, false);
                 // Alterar texto do botão
                 cancelBtn.textContent = "Reiniciar";
                 cancelBtn.onclick = () => window.location.reload();
@@ -279,9 +278,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const res = await eel.cancel_job()();
                 console.log("Cancelamento retornado:", res);
-
-                // Oculta botão imediatamente
-                // toggleFade(cancelSection, false);
 
                 // Dá um pequeno delay para mostrar o aviso e recarregar a tela
                 setTimeout(() => {
