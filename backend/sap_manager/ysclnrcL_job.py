@@ -26,11 +26,11 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
     Executa a transação YSCLNRCL e cria requisições de forma automatizada.
     """
 
-    session.findById("wnd[0]/tbar[0]/okcd").text = "/nYSCLNRCL"
-    session.findById("wnd[0]").sendVKey(0)
-
     for i, req in enumerate(requests_data, start=1):
         print(f"Processando requisição {i}...")
+
+        session.findById("wnd[0]/tbar[0]/okcd").text = "/nYSCLNRCL"
+        session.findById("wnd[0]").sendVKey(0)
 
         # --- Preenche campos principais ---
         session.findById("wnd[0]/usr/ctxtP_BUK_N").text = req.get("empresa", "")
@@ -150,10 +150,29 @@ if __name__ == "__main__":
             # Data corrente no formato aaaammdd
             datacorrente = datetime.now().strftime("%Y%m%d")
 
-            # Padrão dinâmico de arquivo
-            padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+            # --- Geração dos padrões de arquivo para todas as requisições ---
+            padroes = []
+            datacorrente = datetime.now().strftime("%Y%m%d")
 
-            # Intervalo entre verificações (em segundos)
+            if requests_list and isinstance(requests_list, list):
+                for req in requests_list:
+                    defprojeto = req.get("defprojeto", "").strip()
+                    fase = req.get("fase", "").strip()
+                    status = req.get("status", "").strip()
+                    datainicio = req.get("datainicio", "").strip()
+                    exercicio = req.get("exercicio", "").strip()
+                    trimestre = req.get("trimestre", "").strip()
+
+                    # Converte ddmmaaaa → aaaammdd
+                    if len(datainicio) == 8 and datainicio.isdigit():
+                        datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
+
+                    padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+                    padroes.append(padrao)
+            else:
+                print("Nenhum request válido encontrado para montar padrões, usando padrão único.")
+                padroes = [f"RGT_RCL.CSV_{username}_DEFAULT_DEFAULT_DEFAULT_DEFAULT_DEFAULT_DEFAULTT_{datacorrente}_*.txt"]
+
             intervalo_busca = 120
 
             # --- Abre SM37 e marca PRELIM ---
@@ -163,41 +182,44 @@ if __name__ == "__main__":
             session.findById("wnd[0]/tbar[1]/btn[8]").press()
 
             print(f"Iniciando monitoramento da pasta:\n   {origem}")
-            print(f"Aguardando arquivo com padrão: {padrao}\n")
+            print("Aguardando arquivos:")
+            for p in padroes:
+                print(f"   - {p}")
+            print()
+
+            encontrados = set()
 
             while True:
-                arquivos = glob.glob(os.path.join(origem, padrao))
                 session.findById("wnd[0]/tbar[1]/btn[8]").press()
+                for padrao in padroes:
+                    arquivos = glob.glob(os.path.join(origem, padrao))
+                    if arquivos:
+                        for arquivo in arquivos:
+                            nome_arquivo = os.path.basename(arquivo)
+                            destino_final = os.path.join(destino, nome_arquivo)
+                            try:
+                                shutil.move(arquivo, destino_final)
+                                print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
+                                print(f"   De: {origem}")
+                                print(f"DESTINO_FINAL: {destino_final}")
+                                encontrados.add(padrao)
+                            except Exception as e:
+                                import traceback
+                                print(f"Erro ao mover {nome_arquivo}: {e}", flush=True)
+                                print(traceback.format_exc(), flush=True)
+                                status_done = "status_error"
+                                os._exit(0)
 
-                if arquivos:
-                    for arquivo in arquivos:
-                        nome_arquivo = os.path.basename(arquivo)
-                        destino_final = os.path.join(destino, nome_arquivo)
-                        try:
-                            shutil.move(arquivo, destino_final)
-                            print(f"\n [{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
-                            print(f"   {nome_arquivo}")
-                            print(f"   De: {origem}")
-                            print(f"   Para: {destino_final}")
-                            print("\nEncerrando monitoramento.")
-                            
-                            print(f"DESTINO_FINAL: {destino_final}")
-                            status_done = "status_success"
-                            print(status_done)
-                            os._exit(0)
-                        except Exception as e:
-                            import traceback
-                            print(f"Erro no loop de monitoramento: {e}", flush=True)
-                            print(traceback.format_exc(), flush=True)
-                            status_done = "status_error"
+                # --- Verifica se todos os padrões já foram encontrados ---
+                if len(encontrados) == len(padroes):
+                    print("\nTodos os arquivos foram encontrados e movidos com sucesso.")
+                    print("Encerrando monitoramento.")
+                    status_done = "status_success"
+                    os._exit(0)
 
-                            status_done = "status_error"
-                            print(status_done)
-                            os._exit(0)
-                            time.sleep(intervalo_busca)
-                else:
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Arquivo ainda não encontrado... tentando novamente em {intervalo_busca} segundos.")
-                    time.sleep(intervalo_busca)
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Ainda aguardando {len(padroes) - len(encontrados)} arquivo(s)...")
+                time.sleep(intervalo_busca)
+
 
         except Exception as e:
             print(f"Erro geral durante a execução: {e}")
