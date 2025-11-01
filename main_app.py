@@ -17,7 +17,6 @@ active_processes = []
 # Configurações de caminhos
 BASE_DIR = Path(__file__).parent / "frontend"
 REQUESTS_PATH = BASE_DIR / "requests.json"
-
 ROOT_DIR = Path(__file__).parent
 YSCLNRCL_PATH = ROOT_DIR / "backend/sap_manager/ysclnrcl_job.py"
 COMPLETA_XL_PATH = ROOT_DIR / "backend/reports/completa_xl.py"
@@ -256,13 +255,35 @@ def _run_sequenced_job(switches, paths):
         elif paths.get("file_completa"):
             file_completa = paths.get("file_completa")
         else:
-            job_status.update({
-                "running": False,
-                "success": False,
-                "message": "Execução abortada: destino_final não retornado pelo SAP."
-            })
-            return
+            # se não veio do SAP nem do paths, pede o arquivo manualmente
+            file_completa = selecionar_arquivo()
+            if not file_completa:
+                job_status.update({
+                    "running": False,
+                    "success": False,
+                    "message": "Execução cancelada: nenhum arquivo selecionado para Completa."
+                })
+                return
+            paths["file_completa"] = file_completa
 
+        # 🔹 Atualiza requests.json para incluir file_completa1 antes de rodar o job
+        if os.path.exists(REQUESTS_PATH):
+            with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {"paths": [], "requests": [], "status": [{}], "destino": []}
+
+        if "destino" not in data or not isinstance(data["destino"], list):
+            data["destino"] = [{}]
+        if not data["destino"]:
+            data["destino"].append({})
+
+        data["destino"][0]["file_completa1"] = file_completa
+
+        with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+        # Executa o job Completa normalmente
         run_job({"completa": True}, paths)
 
         # Recarrega requests.json e atualiza destinos_dict
@@ -278,20 +299,17 @@ def _run_sequenced_job(switches, paths):
         if switches.get("report_SAP") and destino_final:
             file_reduzida = destino_final
         elif switches.get("completa") and file_completa:
-            file_reduzida = file_completa
+            paths["file_reduzida"] = file_completa
         else:
             if destino_final:
-                file_reduzida = destino_final
-            else:
-                if paths.get("file_reduzida"):
-                    file_reduzida = paths.get("file_reduzida")
-                else:
-                    job_status.update({
-                        "running": False,
-                        "success": False,
-                        "message": "Execução cancelada: nenhum arquivo selecionado para Reduzida."
-                    })
-                    return
+                paths["file_reduzida"] = destino_final
+            elif not paths.get("file_reduzida"):
+                job_status.update({
+                    "running": False,
+                    "success": False,
+                    "message": "Execução cancelada: nenhum arquivo disponível para Reduzida."
+                })
+                return
 
         run_job({"reduzida": True}, paths)
 
