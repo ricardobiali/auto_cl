@@ -25,35 +25,44 @@ with open(requests_path, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 # Extrai o path2 do bloco "paths"
-path_txtOrigin = ""
-path_txtOrigin = data["file_completa"]
-
 path2_value = ""
 if "paths" in data and len(data["paths"]) > 0:
     path2_value = data["paths"][0].get("path2", "")
 
-# Caminhos baseados no path2
-arquivo_txt = Path(path_txtOrigin)
+# Caminho de destino
 pasta_excel = Path(path2_value)
-
-# Garante que a pasta de destino existe
 pasta_excel.mkdir(parents=True, exist_ok=True)
 
-# Nome do arquivo Excel
-nome_excel = arquivo_txt.stem + ".xlsx"
-arquivo_excel = pasta_excel / nome_excel
+# 🔹 Coleta todos os arquivos file_completaN do bloco "destino"
+files_completa = []
+destino_list = data.get("destino", [])
+for destino_dict in destino_list:
+    # Ordena as chaves file_completa1, 2, 3, ... para processar na sequência correta
+    for key in sorted(destino_dict.keys(), key=lambda x: int(x.replace("file_completa", "")) if x != "file_completa" else 0):
+        file_path = destino_dict[key]
+        if file_path and os.path.exists(file_path):
+            files_completa.append(file_path)
+        else:
+            print(f"Aviso: arquivo não encontrado -> {file_path}")
 
-try:
-    # Lê o CSV e salva em Excel
-    df = pd.read_csv(arquivo_txt, sep=";", encoding="utf-8")
-    df.to_excel(arquivo_excel, index=False)
-
-    # Marca status de sucesso
-    status_done = "status_success"
-    print(status_done)
-
-except Exception as e:
-    # Caso dê erro, marca status de erro
+if not files_completa:
+    print("Nenhum arquivo 'file_completa' válido encontrado no JSON.")
     status_done = "status_error"
-    print(f"Ocorreu um erro: {e}")
+else:
+    # Processa cada arquivo em sequência
+    for path_txtOrigin in files_completa:
+        arquivo_txt = Path(path_txtOrigin)
+        nome_excel = arquivo_txt.stem + ".xlsx"
+        arquivo_excel = pasta_excel / nome_excel
+
+        try:
+            # Lê o CSV e salva em Excel
+            df = pd.read_csv(arquivo_txt, sep=";", encoding="utf-8")
+            df.to_excel(arquivo_excel, index=False)
+            print(f"[OK] Convertido: {arquivo_txt.name} → {arquivo_excel.name}")
+
+        except Exception as e:
+            print(f"[ERRO] Falha ao converter {arquivo_txt}: {e}")
+
+    status_done = "status_success"
     print(status_done)

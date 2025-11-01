@@ -47,7 +47,10 @@ def run_job(switches: dict, paths: dict):
     job_status["message"] = "Executando automação..."
     
     results = []
-    destino_final = None
+    destinos_dict = None
+    status_completa = None
+    status_completa_xl = None
+    status_reduzida = None
 
     try:
         # --- Job SAP ---
@@ -65,8 +68,12 @@ def run_job(switches: dict, paths: dict):
             for line in completed.stdout:
                 print(line, end="")
                 stdout_total += line
-                if line.startswith("DESTINO_FINAL:"):
-                    destino_final = line.replace("DESTINO_FINAL:", "").strip()
+                if line.startswith("DESTINOS_DICT_JSON:"):
+                    json_str = line.replace("DESTINOS_DICT_JSON:", "").strip()
+                    try:
+                        destinos_dict = json.loads(json_str)
+                    except json.JSONDecodeError:
+                        destinos_dict = None
 
             completed.wait()
             status_completa = "status_success" if "status_success" in stdout_total else "status_error"
@@ -103,8 +110,8 @@ def run_job(switches: dict, paths: dict):
         if switches.get("reduzida"): status_block["reduzida.py"] = status_reduzida
         existing_data["status"] = [status_block]
 
-        if destino_final:
-            existing_data["destino_final"] = destino_final
+        if destinos_dict:
+            existing_data["destino"] = destinos_dict.get("destino", [])
 
         with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
             json.dump(existing_data, f, indent=4, ensure_ascii=False)
@@ -238,7 +245,9 @@ def _run_sequenced_job(switches, paths):
         if os.path.exists(REQUESTS_PATH):
             with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                destino_final = data.get("destino_final", None)
+                destinos = data.get("destino", [])
+                if destinos:
+                    destino_final = destinos[0] if isinstance(destinos, list) else destinos
 
     # 2️⃣ Switch2 - Completa
     if switches.get("completa"):
@@ -254,18 +263,15 @@ def _run_sequenced_job(switches, paths):
             })
             return
 
+        run_job({"completa": True}, paths)
+
+        # Recarrega requests.json e atualiza destinos_dict
         if os.path.exists(REQUESTS_PATH):
             with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        else:
-            data = {"paths": [], "requests": [], "status": [{}]}
-
-        data["file_completa"] = file_completa
-        with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-
-        run_job({"completa": True}, paths)
-        destino_final = file_completa
+            destinos = data.get("destino", [])
+            if destinos:
+                destino_final = destinos[0] if isinstance(destinos, list) else destinos
 
     # 3️⃣ Switch3 - Reduzida
     if switches.get("reduzida"):
@@ -287,19 +293,15 @@ def _run_sequenced_job(switches, paths):
                     })
                     return
 
-        # Lê ou cria o requests.json
+        run_job({"reduzida": True}, paths)
+
+        # Atualiza destinos_dict no requests.json para Reduzida
         if os.path.exists(REQUESTS_PATH):
             with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        else:
-            data = {"paths": [], "requests": [], "status": [{}]}
-
-        # salva em requests.json
-        data["file_reduzida"] = file_reduzida
-        with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-
-        run_job({"reduzida": True}, paths)
+            destinos = data.get("destino", [])
+            if destinos:
+                destino_final = destinos[0] if isinstance(destinos, list) else destinos
 
     job_status.update({"running": False, "success": True, "message": "Jobs concluídos em sequência."})
 
@@ -356,13 +358,23 @@ def write_requests_json(data):
 def get_welcome_name():
     return user_data.full_name
 
+
 # -----------------------------
-# Inicializa app desktop
+# Inicializa app desktop ou depuração local
 # -----------------------------
 if __name__ == "__main__":
-    eel.start(
-        "index.html",
-        port=8000,
-        size=(1200, 800),
-        cmdline_args=['--start-maximized']
-    )
+    # ⚙️ Modo de depuração local no VS Code
+    if "--debug" in sys.argv:
+        print("\n=== MODO DEBUG ATIVADO ===")
+        switches = {"report_SAP": True, "completa": True, "reduzida": False}
+        paths = {"file_completa": "", "file_reduzida": ""}
+        _run_sequenced_job(switches, paths)
+        print("\n=== EXECUÇÃO DEBUG CONCLUÍDA ===\n")
+    else:
+        # ⚙️ Modo normal (frontend Eel)
+        eel.start(
+            "index.html",
+            port=8000,
+            size=(1200, 800),
+            cmdline_args=['--start-maximized']
+        )

@@ -188,9 +188,14 @@ if __name__ == "__main__":
             print()
 
             encontrados = set()
+            dest_counter = 0
+            arquivo_counter = 1  # contador global de arquivos
+            destinos_dict = {"destino": []}  # <- inicializa a estrutura
 
             while True:
                 session.findById("wnd[0]/tbar[1]/btn[8]").press()
+                arquivos_encontrados_dict = {}  # dict temporário para cada volta do loop
+
                 for padrao in padroes:
                     arquivos = glob.glob(os.path.join(origem, padrao))
                     if arquivos:
@@ -201,8 +206,14 @@ if __name__ == "__main__":
                                 shutil.move(arquivo, destino_final)
                                 print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
                                 print(f"   De: {origem}")
-                                print(f"DESTINO_FINAL: {destino_final}")
+                                print(f"DESTINO_FINAL_{dest_counter}: {destino_final}")
                                 encontrados.add(padrao)
+
+                                # --- Adiciona no dict ---
+                                key_name = f"file_completa{arquivo_counter}"
+                                arquivos_encontrados_dict[key_name] = destino_final
+                                arquivo_counter += 1
+
                             except Exception as e:
                                 import traceback
                                 print(f"Erro ao mover {nome_arquivo}: {e}", flush=True)
@@ -210,16 +221,22 @@ if __name__ == "__main__":
                                 status_done = "status_error"
                                 os._exit(0)
 
+                # adiciona no destino apenas se encontrou algum arquivo nesta volta
+                if arquivos_encontrados_dict:
+                    destinos_dict["destino"].append(arquivos_encontrados_dict)
+                    dest_counter += 1  # atualiza contador de destinos
+
                 # --- Verifica se todos os padrões já foram encontrados ---
                 if len(encontrados) == len(padroes):
                     print("\nTodos os arquivos foram encontrados e movidos com sucesso.")
                     print("Encerrando monitoramento.")
+                    print("Lista de arquivos movidos:", destinos_dict)  # <-- opcional para debug
+                    print("DESTINOS_DICT_JSON:", json.dumps(destinos_dict, ensure_ascii=False))
                     status_done = "status_success"
                     os._exit(0)
 
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] Ainda aguardando {len(padroes) - len(encontrados)} arquivo(s)...")
                 time.sleep(intervalo_busca)
-
 
         except Exception as e:
             print(f"Erro geral durante a execução: {e}")
