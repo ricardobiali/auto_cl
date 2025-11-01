@@ -255,7 +255,6 @@ def _run_sequenced_job(switches, paths):
         elif paths.get("file_completa"):
             file_completa = paths.get("file_completa")
         else:
-            # se não veio do SAP nem do paths, pede o arquivo manualmente
             file_completa = selecionar_arquivo()
             if not file_completa:
                 job_status.update({
@@ -301,16 +300,34 @@ def _run_sequenced_job(switches, paths):
         elif switches.get("completa") and file_completa:
             paths["file_reduzida"] = file_completa
         else:
-            if destino_final:
-                paths["file_reduzida"] = destino_final
-            elif not paths.get("file_reduzida"):
+            file_reduzida = paths.get("file_reduzida")
+            if not file_reduzida:
                 job_status.update({
                     "running": False,
                     "success": False,
-                    "message": "Execução cancelada: nenhum arquivo disponível para Reduzida."
+                    "message": "Execução cancelada: nenhum arquivo selecionado para Reduzida."
                 })
                 return
+            paths["file_reduzida"] = file_reduzida
 
+            # Atualiza requests.json para incluir file_completa1 (compatibilidade com scripts)
+            if os.path.exists(REQUESTS_PATH):
+                with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                data = {"paths": [], "requests": [], "status": [{}], "destino": []}
+
+            if "destino" not in data or not isinstance(data["destino"], list):
+                data["destino"] = [{}]
+            if not data["destino"]:
+                data["destino"].append({})
+
+            data["destino"][0]["file_completa1"] = file_reduzida
+
+            with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+
+        # Executa o job Reduzida normalmente
         run_job({"reduzida": True}, paths)
 
         # Atualiza destinos_dict no requests.json para Reduzida
