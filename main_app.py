@@ -11,13 +11,20 @@ from tkinter import filedialog
 import ctypes
 import psutil
 import win32gui
+import logging
 
 active_processes = []
 
 # Configurações de caminhos
-BASE_DIR = Path(__file__).parent / "frontend"
+if getattr(sys, 'frozen', False):
+    # PyInstaller
+    BASE_DIR = Path(sys._MEIPASS) / "frontend"
+    ROOT_DIR = Path(sys._MEIPASS)
+else:
+    BASE_DIR = Path(__file__).parent / "frontend"
+    ROOT_DIR = Path(__file__).parent
+
 REQUESTS_PATH = BASE_DIR / "requests.json"
-ROOT_DIR = Path(__file__).parent
 YSCLNRCL_PATH = ROOT_DIR / "backend/sap_manager/ysclnrcl_job.py"
 COMPLETA_XL_PATH = ROOT_DIR / "backend/reports/completa_xl.py"
 REDUZIDA_PATH = ROOT_DIR / "backend/reports/reduzida.py"
@@ -40,41 +47,72 @@ eel.init(str(BASE_DIR))
 # Função para rodar o job Python
 # -----------------------------
 def run_python_script(script_path: Path, capture_output=False):
-    """
-    Executa um script Python interno de forma compatível com PyInstaller.
-    Usa o mesmo Python do executável atual (sys.executable).
-    Retorna (stdout, stderr, returncode)
-    """
+    logger = logging.getLogger(__name__)
+
     try:
-        if getattr(sys, 'frozen', False):  # Empacotado com PyInstaller
-            python_exec = sys.executable
+        if getattr(sys, 'frozen', False):
+            python_exec = str(Path(sys._MEIPASS).parent / "python.exe")
+            if not os.path.exists(python_exec):
+                python_exec = "python"
         else:
-            python_exec = sys.executable  # Ambiente normal também
+            python_exec = sys.executable  # ambiente dev
+
+        # Corrige caminho do script dentro do bundle
+        if getattr(sys, 'frozen', False):
+            rel_path = script_path.relative_to(ROOT_DIR)
+            script_path_in_bundle = Path(sys._MEIPASS) / rel_path
+            if script_path_in_bundle.exists():
+                script_path = script_path_in_bundle
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script não encontrado: {script_path}")
 
         cmd = [python_exec, "-u", str(script_path)]
+        logger.info(f"Executando script: {cmd}")
+
+        creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
         if capture_output:
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, creationflags=creationflags
+            )
+            logger.info(f"Saída do script {script_path.name}:\n{result.stdout}")
+            if result.stderr:
+                logger.error(f"Erros do script {script_path.name}:\n{result.stderr}")
             return result.stdout, result.stderr, result.returncode
         else:
             proc = subprocess.Popen(
                 cmd,
                 text=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT
+                stderr=subprocess.STDOUT,
+                creationflags=creationflags,
             )
+
+            def log_subprocess_output(pipe, logger):
+                try:
+                    for line in pipe:
+                        logger.info(line.strip())
+                except Exception as e:
+                    logger.error(f"Erro ao ler saída do subprocesso: {e}")
+
+            threading.Thread(
+                target=log_subprocess_output,
+                args=(proc.stdout, logger),
+                daemon=True
+            ).start()
+
             return proc
+
     except Exception as e:
+        logger.exception(f"Falha ao executar script {script_path}: {e}")
         return "", str(e), -1
 
 # ====================================================
 # EXECUÇÃO DE JOBS SEQUENCIADOS
 # ====================================================
-
 def run_job(switches: dict, paths: dict):
     global job_status
     job_status.update({"running": True, "success": None, "message": "Executando automação..."})
-
     results = []
     destinos_dict = None
     status_completa = status_completa_xl = status_reduzida = None
@@ -408,7 +446,6 @@ def write_requests_json(data):
 def get_welcome_name():
     return user_data.full_name
 
-
 # -----------------------------
 # Inicializa app desktop ou depuração local
 # -----------------------------
@@ -421,7 +458,6 @@ if __name__ == "__main__":
             cmdline_args=['--start-maximized']
         )
     except OSError:
-        # fallback extra, caso 0 falhe por algum motivo
         eel.start(
             "index.html",
             port=8080,
