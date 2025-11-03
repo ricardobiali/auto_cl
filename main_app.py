@@ -398,18 +398,18 @@ def get_welcome_name():
 # Inicializa app desktop ou depuração local
 # -----------------------------
 if __name__ == "__main__":
-    # ⚙️ Modo de depuração local no VS Code
-    if "--debug" in sys.argv:
-        print("\n=== MODO DEBUG ATIVADO ===")
-        switches = {"report_SAP": True, "completa": True, "reduzida": False}
-        paths = {"file_completa": "", "file_reduzida": ""}
-        _run_sequenced_job(switches, paths)
-        print("\n=== EXECUÇÃO DEBUG CONCLUÍDA ===\n")
-    else:
-        # ⚙️ Modo normal (frontend Eel)
+    try:
         eel.start(
             "index.html",
-            port=8000,
+            port=0,  # 0 = escolhe uma porta livre automaticamente
+            size=(1200, 800),
+            cmdline_args=['--start-maximized']
+        )
+    except OSError:
+        # fallback extra, caso 0 falhe por algum motivo
+        eel.start(
+            "index.html",
+            port=8080,
             size=(1200, 800),
             cmdline_args=['--start-maximized']
         )
