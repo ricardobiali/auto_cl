@@ -8,18 +8,23 @@ from datetime import datetime, timedelta
 import os
 import json
 
-# Caminho atual do script
-current_dir = Path(__file__).resolve()
 username = os.getlogin()
 
-# Sobe até encontrar a pasta 'auto_cl_prototype'
-root_dir = current_dir
-while root_dir.name != "auto_cl_prototype":
-    if root_dir.parent == root_dir:
-        raise FileNotFoundError("Pasta 'auto_cl_prototype' não encontrada.")
-    root_dir = root_dir.parent
+# --- Caminho base dinâmico ---
+if getattr(sys, "frozen", False):
+    bundle_dir = Path(sys._MEIPASS)  # para recursos internos do .exe
+    base_dir = Path(sys.executable).parent  # para arquivos persistentes
+else:
+    base_dir = Path(__file__).resolve().parent.parent.parent  # sobe de reports → backend → auto_cl_prototype
 
-json_path = fr"{root_dir}\frontend\requests.json"
+# Caminho do requests.json
+requests_path = base_dir / "frontend" / "requests.json"
+
+# Cria pasta se não existir
+requests_path.parent.mkdir(parents=True, exist_ok=True)
+
+if not requests_path.exists():
+    raise FileNotFoundError(f"Arquivo requests.json não encontrado em: {requests_path}")
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
     """
@@ -79,8 +84,8 @@ if __name__ == "__main__":
         requests_data = []
         path_data = []
 
-        if os.path.exists(json_path):
-            with open(json_path, "r", encoding="utf-8") as f:
+        if os.path.exists(requests_path):
+            with open(requests_path, "r", encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                     if isinstance(data, dict):
@@ -101,7 +106,7 @@ if __name__ == "__main__":
         try:
             # # Caminho do requests.json
             requests_data = os.path.join(
-                fr"{root_dir}\frontend",
+                fr"{base_dir}\frontend",
                 "requests.json"
             )
 

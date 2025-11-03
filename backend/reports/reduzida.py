@@ -15,22 +15,17 @@ from backend.sap_manager.ysrelcont import executar_ysrelcont
 from backend.sap_manager.ko03 import executar_ko03
 from backend.sap_manager.ks13 import executar_ks13
 
-# Caminho atual do script
-current_dir = Path(__file__).resolve()
-username = os.getlogin()
-
-# Sobe até encontrar a pasta 'auto_cl_prototype'
-root_dir = current_dir
-while root_dir.name != "auto_cl_prototype":
-    if root_dir.parent == root_dir:
-        raise FileNotFoundError("Pasta 'auto_cl_prototype' não encontrada.")
-    root_dir = root_dir.parent
+# --- Caminho base persistente ---
+if getattr(sys, "frozen", False):
+    base_dir = Path(sys.executable).parent  # pasta onde o .exe está
+else:
+    base_dir = Path(__file__).resolve().parent.parent.parent
 
 # Caminho do requests.json
-requests_path = os.path.join(
-    fr"{root_dir}\frontend",
-    "requests.json"
-)
+requests_path = base_dir / "frontend" / "requests.json"
+
+if not requests_path.exists():
+    raise FileNotFoundError(f"Arquivo requests.json não encontrado em: {requests_path}")
 
 # Lê o arquivo JSON
 with open(requests_path, "r", encoding="utf-8") as f:
