@@ -39,61 +39,76 @@ eel.init(str(BASE_DIR))
 # -----------------------------
 # Função para rodar o job Python
 # -----------------------------
+def run_python_script(script_path: Path, capture_output=False):
+    """
+    Executa um script Python interno de forma compatível com PyInstaller.
+    Usa o mesmo Python do executável atual (sys.executable).
+    Retorna (stdout, stderr, returncode)
+    """
+    try:
+        if getattr(sys, 'frozen', False):  # Empacotado com PyInstaller
+            python_exec = sys.executable
+        else:
+            python_exec = sys.executable  # Ambiente normal também
+
+        cmd = [python_exec, "-u", str(script_path)]
+
+        if capture_output:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            return result.stdout, result.stderr, result.returncode
+        else:
+            proc = subprocess.Popen(
+                cmd,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT
+            )
+            return proc
+    except Exception as e:
+        return "", str(e), -1
+
+# ====================================================
+# EXECUÇÃO DE JOBS SEQUENCIADOS
+# ====================================================
+
 def run_job(switches: dict, paths: dict):
     global job_status
-    job_status["running"] = True
-    job_status["success"] = None
-    job_status["message"] = "Executando automação..."
-    
+    job_status.update({"running": True, "success": None, "message": "Executando automação..."})
+
     results = []
     destinos_dict = None
-    status_completa = None
-    status_completa_xl = None
-    status_reduzida = None
+    status_completa = status_completa_xl = status_reduzida = None
 
     try:
         # --- Job SAP ---
         if switches.get("report_SAP"):
-            completed = subprocess.Popen(
-                [sys.executable, "-u", str(YSCLNRCL_PATH)],
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                cwd=str(ROOT_DIR)
-            )
-            active_processes.append(completed)
-
+            proc = run_python_script(YSCLNRCL_PATH)
+            active_processes.append(proc)
             stdout_total = ""
-            for line in completed.stdout:
+
+            for line in proc.stdout:
                 print(line, end="")
                 stdout_total += line
                 if line.startswith("DESTINOS_DICT_JSON:"):
-                    json_str = line.replace("DESTINOS_DICT_JSON:", "").strip()
                     try:
-                        destinos_dict = json.loads(json_str)
+                        destinos_dict = json.loads(line.replace("DESTINOS_DICT_JSON:", "").strip())
                     except json.JSONDecodeError:
                         destinos_dict = None
 
-            completed.wait()
+            proc.wait()
             status_completa = "status_success" if "status_success" in stdout_total else "status_error"
             results.append("Job SAP executado com sucesso.")
-        
+
         # --- Completa XL ---
         if switches.get("completa"):
-            completed = subprocess.run(
-                [sys.executable, "-u", str(COMPLETA_XL_PATH)],
-                capture_output=True, text=True, check=True
-            )
-            status_completa_xl = "status_success" if "status_success" in completed.stdout else "status_error"
+            stdout, stderr, _ = run_python_script(COMPLETA_XL_PATH, capture_output=True)
+            status_completa_xl = "status_success" if "status_success" in stdout else "status_error"
             results.append("Relatório COMPLETA_XL gerado com sucesso.")
-        
+
         # --- Reduzida ---
         if switches.get("reduzida"):
-            completed = subprocess.run(
-                [sys.executable, "-u", str(REDUZIDA_PATH)],
-                capture_output=True, text=True, check=True
-            )
-            status_reduzida = "status_success" if "status_success" in completed.stdout else "status_error"
+            stdout, stderr, _ = run_python_script(REDUZIDA_PATH, capture_output=True)
+            status_reduzida = "status_success" if "status_success" in stdout else "status_error"
             results.append("Relatório REDUZIDA gerado com sucesso.")
 
         # Atualiza requests.json
@@ -115,13 +130,10 @@ def run_job(switches: dict, paths: dict):
         with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
             json.dump(existing_data, f, indent=4, ensure_ascii=False)
 
-        job_status["success"] = True
-        job_status["message"] = " | ".join(results)
+        job_status.update({"success": True, "message": " | ".join(results)})
 
-    except subprocess.CalledProcessError as e:
-        job_status["success"] = False
-        job_status["message"] = f"Erro na execução do job:\n{e.stderr}"
-
+    except Exception as e:
+        job_status.update({"success": False, "message": f"Erro: {e}"})
     finally:
         job_status["running"] = False
 
@@ -276,6 +288,9 @@ def _run_sequenced_job(switches, paths):
             data["destino"] = [{}]
         if not data["destino"]:
             data["destino"].append({})
+
+        if isinstance(file_completa, dict):
+            file_completa = file_completa.get("file_completa1") or list(file_completa.values())[0]
 
         data["destino"][0]["file_completa1"] = file_completa
 
