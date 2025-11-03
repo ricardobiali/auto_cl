@@ -8,3 +8,15 @@ datetime
 flask_cors
 flask
 eel
+os
+sys
+time
+datetime
+win32com.client
+subprocess
+psutil
+csv
+xlwings
+threading
+tkinter
+ctypes
