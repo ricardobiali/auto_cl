@@ -39,7 +39,7 @@ for destino_dict in destino_list:
         if file_path and os.path.exists(file_path):
             files_completa.append(file_path)
         else:
-            print(f"Aviso: arquivo não encontrado -> {file_path}")
+            print(f"Aviso: arquivo não encontrado - {file_path}")
 
 if not files_completa:
     print("Nenhum arquivo 'file_completa' válido encontrado no JSON.")
@@ -55,7 +55,7 @@ else:
             # Lê o CSV e salva em Excel
             df = pd.read_csv(arquivo_txt, sep=";", encoding="utf-8")
             df.to_excel(arquivo_excel, index=False)
-            print(f"[OK] Convertido: {arquivo_txt.name} → {arquivo_excel.name}")
+            print(f"[OK] Convertido: {arquivo_txt.name} - {arquivo_excel.name}")
 
         except Exception as e:
             print(f"[ERRO] Falha ao converter {arquivo_txt}: {e}")
