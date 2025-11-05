@@ -155,6 +155,18 @@ footer {
     border-radius: 8px;
 }
 
+/* Oculta os switches 4, 5 e 6 */
+#switch4, #switch5, #switch6 {
+    display: none;
+}
+
+/* Oculta também o texto ao lado dos switches */
+label[for="switch4"],
+label[for="switch5"],
+label[for="switch6"] {
+    display: none;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
