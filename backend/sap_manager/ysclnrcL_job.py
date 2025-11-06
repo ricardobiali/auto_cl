@@ -148,16 +148,13 @@ if __name__ == "__main__":
             else:
                 print(f"Arquivo requests.json não encontrado em {requests_data}, usando valores padrão.")
 
-            # Caminhos de origem e destino
-            origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
             destino = path1  # Agora usa path1 em vez de caminho fixo
 
-            # Data corrente no formato aaaammdd
             datacorrente = datetime.now().strftime("%Y%m%d")
 
             # --- Geração dos padrões de arquivo para todas as requisições ---
             padroes = []
-            datacorrente = datetime.now().strftime("%Y%m%d")
+            origens_por_padrao = []  # guarda o caminho origem para cada padrão
 
             if requests_list and isinstance(requests_list, list):
                 for req in requests_list:
@@ -167,16 +164,26 @@ if __name__ == "__main__":
                     datainicio = req.get("datainicio", "").strip()
                     exercicio = req.get("exercicio", "").strip()
                     trimestre = req.get("trimestre", "").strip()
+                    rit_flag = req.get("rit", False)  
 
                     # Converte ddmmaaaa → aaaammdd
                     if len(datainicio) == 8 and datainicio.isdigit():
                         datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
 
-                    padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+                    # Define origem com base no RIT
+                    if rit_flag:
+                        origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RIT"
+                        padrao = f"_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+                    else:
+                        origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
+                        padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+
                     padroes.append(padrao)
+                    origens_por_padrao.append(origem)
             else:
                 print("Nenhum request válido encontrado para montar padrões, usando padrão único.")
                 padroes = [f"RGT_RCL.CSV_{username}_DEFAULT_DEFAULT_DEFAULT_DEFAULT_DEFAULT_DEFAULTT_{datacorrente}_*.txt"]
+                origens_por_padrao = [fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"]
 
             intervalo_busca = 120
 
@@ -186,22 +193,21 @@ if __name__ == "__main__":
             session.findById("wnd[0]/usr/chkBTCH2170-PRELIM").selected = True
             session.findById("wnd[0]/tbar[1]/btn[8]").press()
 
-            print(f"Iniciando monitoramento da pasta:\n   {origem}")
             print("Aguardando arquivos:")
-            for p in padroes:
-                print(f"   - {p}")
+            for p, o in zip(padroes, origens_por_padrao):
+                print(f"   - {p} (Origem: {o})")
             print()
 
             encontrados = set()
             dest_counter = 0
-            arquivo_counter = 1  # contador global de arquivos
-            destinos_dict = {"destino": []}  # <- inicializa a estrutura
+            arquivo_counter = 1
+            destinos_dict = {"destino": []}
 
             while True:
                 session.findById("wnd[0]/tbar[1]/btn[8]").press()
                 arquivos_encontrados_dict = {}  # dict temporário para cada volta do loop
 
-                for padrao in padroes:
+                for padrao, origem in zip(padroes, origens_por_padrao):
                     arquivos = glob.glob(os.path.join(origem, padrao))
                     if arquivos:
                         for arquivo in arquivos:
@@ -214,7 +220,6 @@ if __name__ == "__main__":
                                 print(f"DESTINO_FINAL_{dest_counter}: {destino_final}")
                                 encontrados.add(padrao)
 
-                                # --- Adiciona no dict ---
                                 key_name = f"file_completa{arquivo_counter}"
                                 arquivos_encontrados_dict[key_name] = destino_final
                                 arquivo_counter += 1

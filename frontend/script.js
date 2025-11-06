@@ -33,14 +33,47 @@ document.addEventListener('DOMContentLoaded', function () {
             return td;
         }
 
+        function tdSelect(name, options) {
+            const td = document.createElement('td');
+            const select = document.createElement('select');
+            select.className = 'form-select';
+            select.name = name;
+            const emptyOption = document.createElement('option');
+            emptyOption.value = "";
+            emptyOption.textContent = "Selecione...";
+            select.appendChild(emptyOption);
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                select.appendChild(option);
+            });
+            td.appendChild(select);
+            return td;
+        }
+
+        function tdSwitch(name) {
+            const td = document.createElement('td');
+            const div = document.createElement('div');
+            div.className = 'form-check form-switch d-flex justify-content-center';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'form-check-input';
+            input.name = name;
+            input.role = 'switch';
+            div.appendChild(input);
+            td.appendChild(div);
+            return td;
+        }
+
         tr.appendChild(tdInput('text', `empresa_${i}`));
         tr.appendChild(tdInput('text', `exercicio_${i}`));
-        tr.appendChild(tdInput('text', `trimestre_${i}`));
+        tr.appendChild(tdSelect(`trimestre_${i}`, [1, 2, 3, 4]));
         tr.appendChild(tdInput('text', `campo_${i}`));
-        tr.appendChild(tdInput('text', `fase_${i}`));
-        tr.appendChild(tdInput('text', `status_${i}`));
-        tr.appendChild(tdInput('text', `versao_${i}`));
-        tr.appendChild(tdInput('text', `secao_${i}`));
+        tr.appendChild(tdSelect(`fase_${i}`, ['E', 'D', 'P']));
+        tr.appendChild(tdSelect(`status_${i}`, [1, 2, 3, 4, 5, 6]));
+        tr.appendChild(tdSelect(`versao_${i}`, [0, 1, 2, 3]));
+        tr.appendChild(tdSelect(`secao_${i}`, ['ANP_0901', 'CL_PADRAO']));
         tr.appendChild(tdInput('text', `defprojeto_${i}`));
 
         const tdDate = document.createElement('td');
@@ -51,7 +84,8 @@ document.addEventListener('DOMContentLoaded', function () {
         tdDate.appendChild(dateInput);
         tr.appendChild(tdDate);
 
-        tr.appendChild(tdInput('text', `bidround_${i}`));
+        tr.appendChild(tdInput('text', `bidround_${i}`));   
+        tr.appendChild(tdSwitch(`rit_${i}`));
         tbody.appendChild(tr);
     }
 
@@ -207,10 +241,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     secao: document.querySelector(`[name="secao_${i}"]`).value.trim(),
                     defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
                     datainicio: formattedDate,
-                    bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim()
+                    bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim(),
+                    rit: document.querySelector(`[name="rit_${i}"]`).checked
                 };
 
-                const hasValue = Object.values(rowObj).some(v => v !== "");
+                const hasValue = Object.entries(rowObj)
+                    .filter(([key]) => key !== "rit") // ignora rit na checagem
+                    .some(([, value]) => value !== "");
                 if (hasValue) data.push(rowObj);
             }
 
