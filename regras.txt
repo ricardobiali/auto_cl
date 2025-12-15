@@ -9,4 +9,4 @@ Rodar o requirements.txt:
 & .env\Scripts\python.exe -m pip install r- requirements.txt
 
 gerar o .exe:
-pyinstaller --noconfirm --onedir --windowed --icon="C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl\frontend\media\BR.ico" --add-data "frontend;frontend" --add-data "backend;backend" --hidden-import "eel" --hidden-import "tkinter" --runtime-hook hook_logging.py --add-data "logging.ini;." --name "pacl_v_1_1_1" main_app.py
+& .env\Scripts\python.exe -m PyInstaller --noconfirm --onedir --windowed --icon="C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl\frontend\media\BR.ico" --add-data "frontend;frontend" --add-data "backend;backend" --hidden-import "eel" --hidden-import "tkinter" --runtime-hook hook_logging.py --add-data "logging.ini;." --name "pacl_v_1_1_1" main_app.py
