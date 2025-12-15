@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const nome = await eel.get_welcome_name()();
             const welcomeEl = document.querySelector('p.mb-0'); 
             if (welcomeEl) {
-                welcomeEl.textContent = `Seja bem-vindo, ${nome}!`;
+                welcomeEl.textContent = `Seja bem-vindo(a), ${nome}!`;
             }
         } catch (err) {
             console.error("Erro ao obter nome do usuário:", err);
