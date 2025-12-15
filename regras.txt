@@ -5,5 +5,8 @@ Sem alterar nada do que já está feito, quero criar novas regras para o funcion
 4. Se o switch2 e switch3 estiverem ativos, o job do switch3 só é executado após a conclusão do switch2 e o file_completa será repetido para o file_reduzida, não devendo abrir o selecionar_arquivo para o job do switch3
 5. Se o switch2 ou switch3, estiver ativo isoladamente, deve abrir o diálogo para selecionar o arquivo (string com caminho e arquivo) 
 
+Rodar o requirements.txt:
+& .env\Scripts\python.exe -m pip install r- requirements.txt
+
 gerar o .exe:
 pyinstaller --noconfirm --onedir --windowed --icon="C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl\frontend\media\BR.ico" --add-data "frontend;frontend" --add-data "backend;backend" --hidden-import "eel" --hidden-import "tkinter" --runtime-hook hook_logging.py --add-data "logging.ini;." --name "pacl_v_1_1_1" main_app.py
