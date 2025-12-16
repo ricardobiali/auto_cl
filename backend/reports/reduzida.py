@@ -106,6 +106,27 @@ for path_origin in files_reduzida:
         ]
         print(f"{linhas_antes - len(df_reduzido)} linhas removidas (Doc custo Expurgado = 'X').")
 
+    def sap_str_para_float(valor):
+        if pd.isna(valor):
+            return 0.0
+
+        s = str(valor).strip()
+        if not s:
+            return 0.0
+
+        # SAP: negativo vem no final (ex: 1,000.00-)
+        negativo = s.endswith("-")
+        s = s.replace("-", "")
+
+        # Remove separador de milhar
+        s = s.replace(",", "")
+
+        try:
+            num = float(s)
+            return -num if negativo else num
+        except ValueError:
+            return 0.0
+
     # --- Converter e formatar colunas numéricas no padrão brasileiro ---
     colunas_numericas = [
         "Valor/Moeda obj",
@@ -117,7 +138,7 @@ for path_origin in files_reduzida:
 
     for col in colunas_numericas:
         if col in df_reduzido.columns:
-            df_reduzido[col] = pd.to_numeric(df_reduzido[col].astype(str).str.replace(",", "").str.strip(), errors='coerce').fillna(0)
+            df_reduzido[col] = df_reduzido[col].apply(sap_str_para_float)
 
     # --- Criar coluna "Estrangeiro $" logo após "Valor/moeda ACC" ---
     if "Valor cont local R$" in df_reduzido.columns and "Valor/moeda ACC" in df_reduzido.columns:
@@ -217,7 +238,11 @@ for path_origin in files_reduzida:
     # --- Executa transação SAP - Contratos/Gerentes ---
     print("Executando consulta YSRELCONT...")
     gerentes_por_contrato = executar_ysrelcont(session, contratos_unicos)
+    if not isinstance(gerentes_por_contrato, dict):
+        gerentes_por_contrato = {}
     print(f"Consulta SAP concluída. {len(gerentes_por_contrato)} contratos encontrados.")
+    if not gerentes_por_contrato:
+        print("YSRELCONT não retornou dados — Gestor do Contrato ficará em branco.")
 
     # --- Preenche coluna Contrato ---
     df_reduzido['Gestor do Contrato'] = (

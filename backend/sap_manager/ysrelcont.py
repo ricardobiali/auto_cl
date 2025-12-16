@@ -30,7 +30,10 @@ def executar_ysrelcont(session, contratos_unicos):
 
         session.findById("wnd[1]/tbar[0]/btn[8]").press()
         time.sleep(1)
-        session.findById("wnd[0]/tbar[1]/btn[8]").press()
+        try:
+            session.findById("wnd[1]/tbar[0]/btn[8]").press()
+        except Exception:
+            return None
         time.sleep(2)
 
         # Verifica popup “sem resultados”
