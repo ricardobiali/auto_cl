@@ -244,16 +244,19 @@ def selecionar_arquivo():
             except Exception as e:
                 print("Aviso: não foi possível vincular janela Tk ao app principal:", e)
 
-        arquivo_selecionado = filedialog.askopenfilename(
+        arquivos = filedialog.askopenfilenames(
             parent=tk_root,
-            title="Selecione um diretório de armazenamento"
+            title="Selecione um ou mais arquivos TXT",
+            filetypes=[("Arquivos TXT", "*.txt")]
         )
-        print("selecionar_arquivo ->", arquivo_selecionado)
-        return arquivo_selecionado if arquivo_selecionado else ""
+
+        arquivos = list(arquivos)
+        print("selecionar_arquivos_txt_multiplos ->", arquivos)
+        return arquivos if arquivos else []
 
     except Exception as e:
-        print("Erro ao abrir diálogo de pasta:", e)
-        return ""
+        print("Erro ao abrir diálogo de múltiplos arquivos:", e)
+        return []
 
 @eel.expose
 def start_job(switches, paths):
@@ -353,7 +356,7 @@ def _run_sequenced_job(switches, paths):
         elif switches.get("completa") and file_completa:
             paths["file_reduzida"] = file_completa
         else:
-            file_reduzida = paths.get("file_reduzida")
+            file_reduzida = paths.get("file_reduzida", [])
             if not file_reduzida:
                 job_status.update({
                     "running": False,
@@ -380,8 +383,27 @@ def _run_sequenced_job(switches, paths):
             with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4, ensure_ascii=False)
 
-        # Executa o job Reduzida normalmente
-        run_job({"reduzida": True}, paths)
+        for file_txt in file_reduzida:
+            # Atualiza requests.json para cada arquivo
+            if os.path.exists(REQUESTS_PATH):
+                with open(REQUESTS_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                data = {"paths": [], "requests": [], "status": [{}], "destino": []}
+
+            if "destino" not in data or not isinstance(data["destino"], list):
+                data["destino"] = [{}]
+            if not data["destino"]:
+                data["destino"].append({})
+
+            # Compatibilidade com scripts existentes
+            data["destino"][0]["file_completa1"] = file_txt
+
+            with open(REQUESTS_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+
+            # Executa o job reduzida para o arquivo atual
+            run_job({"reduzida": True}, paths)
 
         # Atualiza destinos_dict no requests.json para Reduzida
         if os.path.exists(REQUESTS_PATH):
