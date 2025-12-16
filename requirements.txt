@@ -8,4 +8,4 @@ eel
 datetime
 psutil
 xlwings
-pyinstaller
+PyInstaller
