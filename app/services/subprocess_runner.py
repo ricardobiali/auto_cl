@@ -10,7 +10,6 @@ import subprocess
 import threading
 import queue
 import sys
-import time
 
 
 LineCallback = Callable[[str], None]
@@ -23,27 +22,31 @@ class Completed:
     returncode: int
 
 
-def _get_python_exec() -> str:
-    """
-    Resolve qual python executar em DEV vs PyInstaller.
-    """
-    if getattr(sys, "frozen", False):
-        python_exec = str(Path(sys._MEIPASS).parent / "python.exe")  # type: ignore[attr-defined]
-        if not os.path.exists(python_exec):
-            return "python"
-        return python_exec
-    return sys.executable
+def _is_frozen() -> bool:
+    return bool(getattr(sys, "frozen", False))
 
 
 def build_python_cmd(script_path: Union[str, Path], args: Optional[List[str]] = None) -> List[str]:
     """
-    Monta comando [python, -u, script, ...args]
+    DEV:   [python, -u, script.py, ...args]
+    FROZEN:[AUTO_CL.exe, --run, <script_name>, ...args]
+
+    Observação:
+    - No PyInstaller NÃO existe python.exe separado; o runner deve chamar o próprio exe.
+    - Você precisa implementar no app/main_app.py o "dispatch" do argumento --run.
     """
-    py = _get_python_exec()
-    cmd = [py, "-u", str(script_path)]
-    if args:
-        cmd.extend(args)
-    return cmd
+    args = args or []
+
+    sp = Path(script_path)
+    script_name = sp.stem  # reduzida.py -> "reduzida"
+
+    if _is_frozen():
+        exe = sys.executable  # caminho do AUTO_CL.exe
+        return [exe, "--run", script_name, *args]
+
+    # DEV
+    py = sys.executable
+    return [py, "-u", str(sp), *args]
 
 
 def run_capture(
@@ -51,9 +54,6 @@ def run_capture(
     creationflags: int = 0,
     timeout: Optional[float] = None,
 ) -> Completed:
-    """
-    Executa e captura stdout/stderr em memória (bom para jobs curtos).
-    """
     r = subprocess.run(
         cmd,
         capture_output=True,
@@ -72,13 +72,6 @@ def spawn_stream(
     register_proc: Optional[Callable[[subprocess.Popen], None]] = None,
     poll_interval: float = 0.05,
 ) -> Tuple[int, str]:
-    """
-    Executa um processo e faz streaming de stdout linha-a-linha de forma segura.
-    - Lê stdout em UMA única thread e envia as linhas para a fila.
-    - O thread principal consome a fila e chama on_line (se houver).
-    - Se cancel_check() ficar True: terminate().
-    Retorna (returncode, stdout_total).
-    """
     proc = subprocess.Popen(
         cmd,
         text=True,
@@ -111,7 +104,6 @@ def spawn_stream(
     t = threading.Thread(target=_reader, daemon=True)
     t.start()
 
-    # Consome linhas e permite cancelamento
     done = False
     while not done:
         if cancel_check and cancel_check():
@@ -119,14 +111,11 @@ def spawn_stream(
                 proc.terminate()
             except Exception:
                 pass
-            # drena um pouco e sai
-            # (a leitura pode ainda colocar linhas na fila)
+
         try:
             item = q.get(timeout=poll_interval)
         except queue.Empty:
-            # verifica se já terminou
             if proc.poll() is not None:
-                # ainda pode ter itens na fila, tenta drenar
                 continue
             continue
 
@@ -139,10 +128,8 @@ def spawn_stream(
             try:
                 on_line(item.rstrip("\n"))
             except Exception:
-                # callback não pode derrubar o runner
                 pass
 
-    # garante que terminou
     try:
         proc.wait(timeout=5)
     except Exception:

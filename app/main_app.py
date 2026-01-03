@@ -1,8 +1,10 @@
-# main_app.py
+# app/main_app.py
 from __future__ import annotations
 
 import os
+import sys
 import subprocess
+import runpy
 import eel
 
 from app.hook_logging import setup_logging
@@ -15,7 +17,53 @@ from app.eel_api import register_eel_api
 from app.services.dialogs import selecionar_diretorio, selecionar_arquivo
 
 
+# ----------------------------
+# ✅ Runner mode (PyInstaller)
+# ----------------------------
+def _dispatch_run_mode() -> None:
+    """
+    Quando chamado como:
+        AUTO_CL.exe --run <script_name>
+    executa o módulo correspondente e sai.
+    """
+    if "--run" not in sys.argv:
+        return
+
+    idx = sys.argv.index("--run")
+    script_name = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else ""
+    if not script_name:
+        print("[ERRO] --run sem nome do script.")
+        raise SystemExit(2)
+
+    # mapeia o stem do arquivo -> módulo python
+    # (stems que você usa hoje: ysclnrcl_job / completa_xl / reduzida)
+    module_map = {
+        "ysclnrcl_job": "backend.sap_manager.ysclnrcl_job",
+        "completa_xl": "backend.reports.completa_xl",
+        "reduzida": "backend.reports.reduzida",
+    }
+
+    mod = module_map.get(script_name)
+    if not mod:
+        print(f"[ERRO] Script desconhecido em --run: {script_name}")
+        print(f"Disponíveis: {', '.join(module_map.keys())}")
+        raise SystemExit(2)
+
+    # logging também no worker (assim o subprocess deixa rastro)
+    setup_logging()
+
+    # executa como se fosse "python -m <mod>"
+    # IMPORTANTE: seus scripts têm execução no top-level, então isso já dispara o fluxo.
+    runpy.run_module(mod, run_name="__main__")
+
+    # se chegou aqui, terminou com sucesso
+    raise SystemExit(0)
+
+
 def main() -> None:
+    # ✅ Se foi chamado como worker/subprocess, executa e sai
+    _dispatch_run_mode()
+
     # logging primeiro
     setup_logging()
 
@@ -25,7 +73,7 @@ def main() -> None:
     root_dir = P.root
     requests_path = P.requests_json
 
-    # scripts
+    # scripts (em DEV servem como caminhos reais; no frozen o build_python_cmd usa apenas o stem)
     sap_script = root_dir / "backend/sap_manager/ysclnrcl_job.py"
     completa_script = root_dir / "backend/reports/completa_xl.py"
     reduzida_script = root_dir / "backend/reports/reduzida.py"
@@ -72,6 +120,7 @@ def main() -> None:
             size=(1200, 800),
             cmdline_args=["--start-maximized"],
         )
+
 
 if __name__ == "__main__":
     main()
