@@ -5,6 +5,7 @@ import os
 import sys
 import subprocess
 import runpy
+import traceback
 import eel
 
 from app.hook_logging import setup_logging
@@ -23,20 +24,22 @@ from app.services.dialogs import selecionar_diretorio, selecionar_arquivo
 def _dispatch_run_mode() -> None:
     """
     Quando chamado como:
-        AUTO_CL.exe --run <script_name>
+        AUTO_CL.exe --run <script_name> [args...]
     executa o módulo correspondente e sai.
     """
-    if "--run" not in sys.argv:
-        return
+    try:
+        idx = sys.argv.index("--run")
+    except ValueError:
+        return  # normal mode
 
-    idx = sys.argv.index("--run")
-    script_name = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else ""
-    if not script_name:
-        print("[ERRO] --run sem nome do script.")
+    # pega script_name e args extras
+    if idx + 1 >= len(sys.argv):
+        print("[ERRO] --run sem nome do script.", flush=True)
         raise SystemExit(2)
 
-    # mapeia o stem do arquivo -> módulo python
-    # (stems que você usa hoje: ysclnrcl_job / completa_xl / reduzida)
+    script_name = sys.argv[idx + 1].strip()
+    extra_args = sys.argv[idx + 2 :]  # se quiser repassar argumentos
+
     module_map = {
         "ysclnrcl_job": "backend.sap_manager.ysclnrcl_job",
         "completa_xl": "backend.reports.completa_xl",
@@ -45,42 +48,57 @@ def _dispatch_run_mode() -> None:
 
     mod = module_map.get(script_name)
     if not mod:
-        print(f"[ERRO] Script desconhecido em --run: {script_name}")
-        print(f"Disponíveis: {', '.join(module_map.keys())}")
+        print(f"[ERRO] Script desconhecido em --run: {script_name}", flush=True)
+        print(f"Disponíveis: {', '.join(module_map.keys())}", flush=True)
         raise SystemExit(2)
 
-    # logging também no worker (assim o subprocess deixa rastro)
+    # ✅ unbuffer/encoding o mais cedo possível (antes de qualquer coisa)
+    os.environ["PYTHONUNBUFFERED"] = "1"
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
+    # ✅ força line buffering / write-through
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", line_buffering=True, write_through=True)
+        sys.stderr.reconfigure(encoding="utf-8", line_buffering=True, write_through=True)
+    except Exception:
+        pass
+
+    # ✅ logging também no worker (vai para o mesmo arquivo do app)
+    # (se o seu Paths.build() aponta para a raiz do app, o log fica na pasta do exe)
     setup_logging()
 
-    # executa como se fosse "python -m <mod>"
-    # IMPORTANTE: seus scripts têm execução no top-level, então isso já dispara o fluxo.
-    runpy.run_module(mod, run_name="__main__")
+    # ✅ muito importante: ajustar sys.argv para simular "python -m módulo args..."
+    sys.argv = [mod, *extra_args]
 
-    # se chegou aqui, terminou com sucesso
-    raise SystemExit(0)
+    try:
+        runpy.run_module(mod, run_name="__main__")
+        raise SystemExit(0)
+    except SystemExit:
+        # respeita sys.exit() do script
+        raise
+    except Exception as e:
+        # imprime traceback no stdout (vai para o streaming) e no log
+        print("[ERRO] Falha no worker --run:", flush=True)
+        traceback.print_exc()
+        raise SystemExit(1)
 
 
 def main() -> None:
-    # ✅ Se foi chamado como worker/subprocess, executa e sai
     _dispatch_run_mode()
 
-    # logging primeiro
     setup_logging()
 
-    # paths
     P = Paths.build()
     base_dir = P.frontend
     root_dir = P.root
     requests_path = P.requests_json
 
-    # scripts (em DEV servem como caminhos reais; no frozen o build_python_cmd usa apenas o stem)
     sap_script = root_dir / "backend/sap_manager/ysclnrcl_job.py"
     completa_script = root_dir / "backend/reports/completa_xl.py"
     reduzida_script = root_dir / "backend/reports/reduzida.py"
 
     creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
-    # estado + runner
     state = JobState()
     runner = JobRunner(
         state=state,
@@ -91,10 +109,8 @@ def main() -> None:
         creationflags=creationflags,
     )
 
-    # eel
     eel.init(str(base_dir))
 
-    # registra API exposta ao JS
     register_eel_api(
         eel,
         state=state,
@@ -105,21 +121,10 @@ def main() -> None:
         selecionar_arquivo_cb=selecionar_arquivo,
     )
 
-    # start
     try:
-        eel.start(
-            "index.html",
-            port=0,
-            size=(1200, 800),
-            cmdline_args=["--start-maximized"],
-        )
+        eel.start("index.html", port=0, size=(1200, 800), cmdline_args=["--start-maximized"])
     except OSError:
-        eel.start(
-            "index.html",
-            port=8080,
-            size=(1200, 800),
-            cmdline_args=["--start-maximized"],
-        )
+        eel.start("index.html", port=8080, size=(1200, 800), cmdline_args=["--start-maximized"])
 
 
 if __name__ == "__main__":

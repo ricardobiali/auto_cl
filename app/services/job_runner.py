@@ -196,7 +196,7 @@ class JobRunner:
 
             # 1) SAP
             if switches.get("report_SAP"):
-                self.state.set_message("Etapa 1/3: SAP...")
+                self.state.set_message("Etapa SAP...")
                 ok, _destinos, _out = self.run_sap()
 
                 if not ok and not switches.get("completa") and not switches.get("reduzida"):
@@ -209,7 +209,7 @@ class JobRunner:
 
             # 2) COMPLETA
             if switches.get("completa"):
-                self.state.set_message("Etapa 2/3: COMPLETA...")
+                self.state.set_message("Etapa COMPLETA...")
 
                 if destino_final:
                     file_completa = destino_final
@@ -243,7 +243,7 @@ class JobRunner:
             # 3) REDUZIDA
             if switches.get("reduzida"):
                 # ✅ NOVO: feedback inicial
-                self.state.set_message("Etapa 3/3: REDUZIDA...")
+                self.state.set_message("Etapa REDUZIDA...")
 
                 if switches.get("report_SAP") and destino_final:
                     file_reduzida = destino_final
@@ -268,7 +268,7 @@ class JobRunner:
 
                     nome = Path(file_txt).name
                     # ✅ NOVO: progresso "executando 1/4"
-                    self.state.set_message(f"Etapa 3/3: REDUZIDA — executando {idx}/{total} ({nome})")
+                    self.state.set_message(f"Etapa REDUZIDA — executando {idx}/{total} ({nome})")
 
                     self._write_file_completa1(file_txt)
                     ok, _out = self.run_reduzida()

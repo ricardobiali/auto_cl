@@ -3,7 +3,6 @@ from pathlib import Path
 import shutil
 import sys
 import time
-from sap_connect import get_sap_free_session, start_sap_manager, start_connection, close_sap_manager
 from datetime import datetime, timedelta
 import os
 import json
@@ -21,6 +20,13 @@ try:
         sys.path.insert(0, str(repo_root))
 except Exception:
     pass
+
+from backend.sap_manager.sap_connect import (
+    get_sap_free_session,
+    start_sap_manager,
+    start_connection,
+    close_sap_manager,
+)
 
 # ======================================================
 # ✅ ALTERAÇÃO MÍNIMA 2: requests.json via AppData (Paths)
