@@ -5,20 +5,49 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import threading
+from pathlib import Path
 
 from app.paths import Paths
+
+
+def _choose_log_file() -> Path:
+    """
+    Prioridade:
+    1) Pasta do executável (raiz do app) -> auto_cl.log
+    2) Fallback: AppData\\AUTO_CL\\logs\\auto_cl.log
+    """
+    # 1) raiz do app (onde está o .exe)
+    if getattr(sys, "frozen", False):
+        app_root = Path(sys.executable).parent
+    else:
+        # em dev, usa raiz do projeto (ajuste se preferir outro local)
+        app_root = Path(__file__).resolve().parents[1]
+
+    preferred = app_root / "auto_cl.log"
+
+    # testa se consegue criar/append
+    try:
+        preferred.parent.mkdir(parents=True, exist_ok=True)
+        with open(preferred, "a", encoding="utf-8"):
+            pass
+        return preferred
+    except Exception:
+        # 2) fallback AppData
+        P = Paths.build()
+        fallback = P.logs / "auto_cl.log"
+        fallback.parent.mkdir(parents=True, exist_ok=True)
+        return fallback
 
 
 def setup_logging(level: int = logging.INFO) -> None:
     """
     Logging robusto:
-    - arquivo em AppData\\logs\\auto_cl.log
+    - Preferência: arquivo na raiz do app (auto_cl.log ao lado do .exe)
+    - Fallback: AppData\\...\\logs\\auto_cl.log se não tiver permissão
     - rotação (2MB, 5 backups)
     - thread excepthook
-    - mantém loggers existentes
     """
-    P = Paths.build()
-    log_file = P.logs / "auto_cl.log"
+    log_file = _choose_log_file()
 
     # raiz
     root = logging.getLogger()
@@ -64,3 +93,5 @@ def setup_logging(level: int = logging.INFO) -> None:
         pass
 
     logging.getLogger(__name__).info("Logging inicializado: %s", log_file)
+    # dica extra: se você quiser, pode também printar isso pra aparecer no seu console/avisos:
+    # print(f"[LOG] {log_file}")

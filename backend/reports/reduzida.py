@@ -440,6 +440,12 @@ for path_origin in files_reduzida:
     # ✅ Salva o DataFrame reduzido antes de tentar reabrir
     df_reduzido.to_csv(caminho_saida, sep=";", index=False, encoding="utf-8")
 
+# =========================================================
+# BLOCO OPCIONAL – GERAÇÃO DE EXCEL
+# Atualmente DESATIVADO por decisão de negócio
+# Para reativar, basta remover os comentários abaixo
+# =========================================================
+
     try:
         # # Lê o CSV e salva em Excel
         # df = pd.read_csv(caminho_saida, sep=";", encoding="utf-8", low_memory=False, dtype=str)
