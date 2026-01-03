@@ -1,22 +1,53 @@
+// frontend/script.js
 document.addEventListener('DOMContentLoaded', function () {
+
+    // =====================================================
+    // 1) WELCOME (robusto: tenta várias funções no backend)
+    // =====================================================
+    async function getWelcomeProfileSafe() {
+        // tenta get_welcome_user -> get_user_profile -> get_welcome_name
+        try {
+            if (eel.get_welcome_user) return await eel.get_welcome_user()(); // {name, gender}
+        } catch (e) { /* ignore */ }
+
+        try {
+            if (eel.get_user_profile) return await eel.get_user_profile()(); // {name, gender}
+        } catch (e) { /* ignore */ }
+
+        try {
+            if (eel.get_welcome_name) {
+                const nome = await eel.get_welcome_name()();
+                return { name: nome, gender: "m" };
+            }
+        } catch (e) { /* ignore */ }
+
+        return { name: "", gender: "m" };
+    }
+
     async function atualizarNomeUsuario() {
         try {
-            const nome = await eel.get_welcome_name()();
-            const welcomeEl = document.querySelector('p.mb-0'); 
+            const profile = await getWelcomeProfileSafe();
+            const nome = (profile?.name || "").trim();
+            const gender = (profile?.gender || "m").toLowerCase();
+
+            const welcomeEl = document.querySelector('p.mb-0');
             if (welcomeEl) {
-                welcomeEl.textContent = `Seja bem-vindo(a), ${nome}!`;
+                const saudacao = (gender === "f") ? "Seja bem-vinda, " : "Seja bem-vindo, ";
+                welcomeEl.textContent = `${saudacao}${nome}!`;
             }
         } catch (err) {
-            console.error("Erro ao obter nome do usuário:", err);
+            console.error("Erro ao obter dados do usuário:", err);
         }
     }
 
     atualizarNomeUsuario();
 
+    // =====================================================
+    // TABELA (seu código original)
+    // =====================================================
     const tbody = document.getElementById('rows-body');
     const rows = 20;
 
-    // Cria a tabela dinamicamente
     for (let i = 1; i <= rows; i++) {
         const tr = document.createElement('tr');
         const tdIndex = document.createElement('td');
@@ -84,17 +115,19 @@ document.addEventListener('DOMContentLoaded', function () {
         tdDate.appendChild(dateInput);
         tr.appendChild(tdDate);
 
-        tr.appendChild(tdInput('text', `bidround_${i}`));   
+        tr.appendChild(tdInput('text', `bidround_${i}`));
         tr.appendChild(tdSwitch(`rit_${i}`));
         tbody.appendChild(tr);
     }
 
-    // 📁 Captura das seções
+    // =====================================================
+    // Captura de seções (seu código original)
+    // =====================================================
     const optionsSection = document.querySelectorAll('.form-section')[0];
     const tableSection = document.querySelector('.table-container');
     const directoriesSection = document.querySelectorAll('.form-section')[1];
     const runSection = document.getElementById('runSection');
-    const cancelSection = document.getElementById('cancelSection'); 
+    const cancelSection = document.getElementById('cancelSection');
     const cancelBtn = document.getElementById('cancelBtn');
 
     const pathInputs = {
@@ -127,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }, duration + 20);
         }
     }
-    
+
     [tableSection, directoriesSection, runSection, cancelSection, ...Object.values(pathInputs)].forEach(el => {
         if (!el) return;
         if (!el.classList.contains('show')) {
@@ -165,6 +198,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const avisosContainer = document.getElementById('avisosContainer');
     const avisosContent = document.getElementById('avisosContent');
 
+    // =====================================================
+    // 2) AVISOS + LOGS em tempo real
+    // =====================================================
     function exibirAvisos(mensagens) {
         avisosContent.innerHTML = mensagens.map(msg => `
             <li>
@@ -185,7 +221,48 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
     }
 
-    // Oculta todas seções exceto avisos e botão cancelar
+    // ✅ NOVO: renderiza logs do backend (SAP) enquanto roda
+    let _lastLogsLen = 0;
+
+    function renderLogsAoVivo(logs) {
+        if (!Array.isArray(logs) || logs.length === 0) return;
+
+        // se resetou (novo job), reinicia
+        if (logs.length < _lastLogsLen) _lastLogsLen = 0;
+
+        // adiciona somente os novos
+        const novos = logs.slice(_lastLogsLen);
+        _lastLogsLen = logs.length;
+        if (novos.length === 0) return;
+
+        // garante que o container está visível
+        avisosContainer.style.display = 'block';
+        avisosContainer.classList.add('fade-in');
+
+        // adiciona no final do <ul>
+        const html = novos.map(l => `
+            <li style="display:flex; align-items:center; gap:6px;">
+                <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+                    ${escapeHtml(String(l))}
+                </span>
+            </li>
+        `).join('');
+
+        avisosContent.insertAdjacentHTML('beforeend', html);
+
+        // rola pra baixo
+        avisosContainer.scrollTop = avisosContainer.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+        return str
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
     function hideSectionsOnRun() {
         const sectionsToHide = [
             optionsSection,
@@ -197,10 +274,34 @@ document.addEventListener('DOMContentLoaded', function () {
         sectionsToHide.forEach(el => toggleFade(el, false));
     }
 
-    // Função de polling para checar status do job
+    function atualizarAvisoEmExecucao(texto) {
+        if (!texto) return;
+
+        // tenta achar o primeiro aviso "principal" (o que tem spinner)
+        const principal = avisosContent.querySelector("li .spinner-border + span");
+        if (principal) {
+            principal.textContent = texto;
+        }
+    }
+
+
+    // =====================================================
+    // Polling status (✅ agora também puxa logs)
+    // =====================================================
     async function checarStatus() {
         try {
             const status = await eel.get_job_status()();
+
+            // ✅ NOVO: mostra logs enquanto roda
+            if (status?.logs) {
+                renderLogsAoVivo(status.logs);
+            }
+
+            // ✅ NOVO: mensagem viva de progresso
+            if (status.running && status.message) {
+                atualizarAvisoEmExecucao(status.message);
+            }
+
             if (!status.running) {
                 atualizarAvisoFinal(
                     status.success
@@ -208,17 +309,25 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
                     status.message
                 );
-                // Alterar texto do botão
-                cancelBtn.textContent = "Reiniciar";
-                cancelBtn.onclick = () => window.location.reload();
+                
+                const newBtn = cancelBtn.cloneNode(true);
+                newBtn.textContent = "Reiniciar";
+                newBtn.onclick = () => window.location.reload();
+                cancelBtn.parentNode.replaceChild(newBtn, cancelBtn);
+
             } else {
-                setTimeout(checarStatus, 1000); // tenta de novo em 1s
+                setTimeout(checarStatus, 1000);
             }
+
         } catch (err) {
             console.error(err);
+            setTimeout(checarStatus, 1500);
         }
     }
 
+    // =====================================================
+    // RUN
+    // =====================================================
     if (runBtn) {
         runBtn.addEventListener('click', async function () {
             const data = [];
@@ -246,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
 
                 const hasValue = Object.entries(rowObj)
-                    .filter(([key]) => key !== "rit") // ignora rit na checagem
+                    .filter(([key]) => key !== "rit")
                     .some(([, value]) => value !== "");
                 if (hasValue) data.push(rowObj);
             }
@@ -271,7 +380,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const payload = { paths: paths, requests: data, switches: switches };
 
-            // Exibe avisos iniciais
+            // ✅ reset do log incremental (novo job)
+            _lastLogsLen = 0;
+
             const mensagens = [];
             if (document.getElementById('switch1')?.checked) mensagens.push("Aguardando requisição da base do SAP");
             if (document.getElementById('switch2')?.checked) mensagens.push("Aguardando relatório completo");
@@ -282,13 +393,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (mensagens.length > 0) exibirAvisos(mensagens);
 
             hideSectionsOnRun();
-            
             toggleFade(cancelSection, true);
 
-            // --- Salva requests.json ---
             await eel.save_requests(payload)();
 
-            // --- Dispara o job Python ---
             const result = await eel.start_job(switches, paths[0])();
             if (result.status === "started") {
                 checarStatus();
@@ -304,7 +412,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Ação do botão Cancelar
+    // =====================================================
+    // Cancel
+    // =====================================================
     if (cancelBtn) {
         cancelBtn.addEventListener('click', async () => {
             try {
@@ -313,10 +423,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Cancelando automação...'
                 );
 
-                const res = await eel.cancel_job()();
-                console.log("Cancelamento retornado:", res);
+                await eel.cancel_job()();
 
-                // Dá um pequeno delay para mostrar o aviso e recarregar a tela
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
@@ -327,27 +435,28 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-// Função para abrir diálogo de seleção de pasta
-async function selecionarDiretorio() {
-    try {
-        const caminho = await eel.selecionar_diretorio()();
-        return caminho;
-    } catch (error) {
-        console.error("Erro ao selecionar diretório:", error);
-        return "";
-    }
-}
-
-// Aplica o evento de clique no ícone de pasta
-document.querySelectorAll(".input-group-text").forEach(icon => {
-    icon.addEventListener("click", async (e) => {
-        const input = e.target.closest(".input-group").querySelector("input");
-        if (input) {
-            const caminho = await selecionarDiretorio();
-            if (caminho) input.value = caminho;
+    // =====================================================
+    // Dialog de diretório
+    // =====================================================
+    async function selecionarDiretorio() {
+        try {
+            const caminho = await eel.selecionar_diretorio()();
+            return caminho;
+        } catch (error) {
+            console.error("Erro ao selecionar diretório:", error);
+            return "";
         }
+    }
+
+    document.querySelectorAll(".input-group-text").forEach(icon => {
+        icon.addEventListener("click", async (e) => {
+            const input = e.target.closest(".input-group").querySelector("input");
+            if (input) {
+                const caminho = await selecionarDiretorio();
+                if (caminho) input.value = caminho;
+            }
+        });
     });
-});
 
     updateVisibility();
 });

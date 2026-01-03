@@ -10,21 +10,27 @@ import json
 
 username = os.getlogin()
 
-# --- Caminho base dinâmico ---
-if getattr(sys, "frozen", False):
-    bundle_dir = Path(sys._MEIPASS)  # para recursos internos do .exe
-    base_dir = Path(sys.executable).parent  # para arquivos persistentes
-else:
-    base_dir = Path(__file__).resolve().parent.parent.parent  # sobe de reports → backend → auto_cl_prototype
+# ======================================================
+# ✅ ALTERAÇÃO MÍNIMA 1: garantir que o pacote "app" seja importável
+# (quando executado como script via subprocess)
+# ======================================================
+try:
+    # repo_root = .../auto_cl
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+except Exception:
+    pass
 
-# Caminho do requests.json
-requests_path = base_dir / "frontend" / "requests.json"
+# ======================================================
+# ✅ ALTERAÇÃO MÍNIMA 2: requests.json via AppData (Paths)
+# ======================================================
+from app.paths import Paths
+from app.services.file_io import load_json
 
-# Cria pasta se não existir
-requests_path.parent.mkdir(parents=True, exist_ok=True)
+P = Paths.build()
+requests_path = P.requests_json  # ex: C:\Users\...\AppData\Local\AUTO_CL\requests.json
 
-if not requests_path.exists():
-    raise FileNotFoundError(f"Arquivo requests.json não encontrado em: {requests_path}")
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
     """
@@ -73,6 +79,7 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
 
         print(f"Requisição {i} agendada para {str_date_plan} às {str_time_plan}")
 
+
 # Execução principal
 if __name__ == "__main__":
     try:
@@ -80,19 +87,27 @@ if __name__ == "__main__":
         start_connection()
         session = get_sap_free_session()
 
-        # --- Lê requests.json ---
-        requests_data = []
-        path_data = []
+        # ✅ aborta com mensagem se requests.json não existir
+        if not requests_path.exists():
+            print(f"ERRO: requests.json não encontrado em: {requests_path}")
+            print("Dica: rode a interface e clique em Executar (ela cria o requests.json antes do job).")
+            sys.exit(1)
 
-        if os.path.exists(requests_path):
-            with open(requests_path, "r", encoding="utf-8") as f:
-                try:
-                    data = json.load(f)
-                    if isinstance(data, dict):
-                        requests_data = data.get("requests", [])
-                        path_data = data.get("paths", [])
-                except json.JSONDecodeError as e:
-                    print("Erro ao ler requests.json:", e)
+        data = load_json(requests_path)
+        if not isinstance(data, dict):
+            print(f"ERRO: requests.json inválido (não é um objeto JSON). Caminho: {requests_path}")
+            sys.exit(1)
+
+        requests_list = data.get("requests", [])
+        paths_list = data.get("paths", [])
+
+        if not requests_list or not isinstance(requests_list, list):
+            print(f"ERRO: requests.json não contém 'requests' válido (lista). Caminho: {requests_path}")
+            sys.exit(1)
+
+        if not paths_list or not isinstance(paths_list, list):
+            print(f"ERRO: requests.json não contém 'paths' válido (lista). Caminho: {requests_path}")
+            sys.exit(1)
 
         # --- Cria requisições ---
         create_YSCLBLRIT_requests(
@@ -100,90 +115,62 @@ if __name__ == "__main__":
             init_date="01.01.2011",
             init_time="08:00",
             interval=15,
-            requests_data=requests_data
+            requests_data=requests_list
         )
 
         try:
-            # # Caminho do requests.json
-            requests_data = os.path.join(
-                fr"{base_dir}\frontend",
-                "requests.json"
-            )
-
             # Valores padrão
             defprojeto = fase = status = datainicio = exercicio = trimestre = path1 = "DEFAULT"
 
-            # Lê o arquivo requests.json e extrai dados do primeiro item
-            if os.path.exists(requests_data):
-                with open(requests_data, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    requests_list = data.get("requests", [])
-                    paths_list = data.get("paths", [])
+            # Lê dados do primeiro item
+            first = requests_list[0]
+            defprojeto = first.get("defprojeto", "").strip()
+            fase = first.get("fase", "").strip()
+            status = first.get("status", "").strip()
+            datainicio = first.get("datainicio", "").strip()
+            exercicio = first.get("exercicio", "").strip()
+            trimestre = first.get("trimestre", "").strip()
 
-                    if requests_list and isinstance(requests_list, list):
-                        first = requests_list[0]
-                        defprojeto = first.get("defprojeto", "").strip()
-                        fase = first.get("fase", "").strip()
-                        status = first.get("status", "").strip()
-                        datainicio = first.get("datainicio", "").strip()
-                        exercicio = first.get("exercicio", "").strip()
-                        trimestre = first.get("trimestre", "").strip()
-
-                        # Converte ddmmaaaa → aaaammdd
-                        if len(datainicio) == 8 and datainicio.isdigit():
-                            datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
-                        else:
-                            print(f"Formato inesperado de datainicio: {datainicio}")
-
-                    else:
-                        print("Nenhum registro em 'requests', usando valores padrão.")
-
-                    # Lê path1 do primeiro item em 'paths', se existir
-                    if paths_list and isinstance(paths_list, list):
-                        path1 = paths_list[0].get("path1", "").strip()
-                        if not path1:
-                            print("'path1' vazio no requests.json, usando padrão.")
-                    else:
-                        print("Nenhum registro em 'paths', usando padrão.")
+            # Converte ddmmaaaa → aaaammdd
+            if len(datainicio) == 8 and datainicio.isdigit():
+                datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
             else:
-                print(f"Arquivo requests.json não encontrado em {requests_data}, usando valores padrão.")
+                print(f"Formato inesperado de datainicio: {datainicio}")
 
-            destino = path1  # Agora usa path1 em vez de caminho fixo
+            # path1
+            path1 = paths_list[0].get("path1", "").strip()
+            if not path1:
+                print("ERRO: 'path1' vazio no requests.json.")
+                sys.exit(1)
 
+            destino = path1
             datacorrente = datetime.now().strftime("%Y%m%d")
 
             # --- Geração dos padrões de arquivo para todas as requisições ---
             padroes = []
-            origens_por_padrao = []  # guarda o caminho origem para cada padrão
+            origens_por_padrao = []
 
-            if requests_list and isinstance(requests_list, list):
-                for req in requests_list:
-                    defprojeto = req.get("defprojeto", "").strip()
-                    fase = req.get("fase", "").strip()
-                    status = req.get("status", "").strip()
-                    datainicio = req.get("datainicio", "").strip()
-                    exercicio = req.get("exercicio", "").strip()
-                    trimestre = req.get("trimestre", "").strip()
-                    rit_flag = req.get("rit", False)  
+            for req in requests_list:
+                defprojeto = req.get("defprojeto", "").strip()
+                fase = req.get("fase", "").strip()
+                status = req.get("status", "").strip()
+                datainicio = req.get("datainicio", "").strip()
+                exercicio = req.get("exercicio", "").strip()
+                trimestre = req.get("trimestre", "").strip()
+                rit_flag = req.get("rit", False)
 
-                    # Converte ddmmaaaa → aaaammdd
-                    if len(datainicio) == 8 and datainicio.isdigit():
-                        datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
+                if len(datainicio) == 8 and datainicio.isdigit():
+                    datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
 
-                    # Define origem com base no RIT
-                    if rit_flag:
-                        origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RIT"
-                        padrao = f"_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
-                    else:
-                        origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
-                        padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+                if rit_flag:
+                    origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RIT"
+                    padrao = f"_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+                else:
+                    origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
+                    padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
 
-                    padroes.append(padrao)
-                    origens_por_padrao.append(origem)
-            else:
-                print("Nenhum request válido encontrado para montar padrões, usando padrão único.")
-                padroes = [f"RGT_RCL.CSV_{username}_DEFAULT_DEFAULT_DEFAULT_DEFAULT_DEFAULT_DEFAULTT_{datacorrente}_*.txt"]
-                origens_por_padrao = [fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"]
+                padroes.append(padrao)
+                origens_por_padrao.append(origem)
 
             intervalo_busca = 120
 
@@ -205,7 +192,7 @@ if __name__ == "__main__":
 
             while True:
                 session.findById("wnd[0]/tbar[1]/btn[8]").press()
-                arquivos_encontrados_dict = {}  # dict temporário para cada volta do loop
+                arquivos_encontrados_dict = {}
 
                 for padrao, origem in zip(padroes, origens_por_padrao):
                     arquivos = glob.glob(os.path.join(origem, padrao))
@@ -231,16 +218,14 @@ if __name__ == "__main__":
                                 status_done = "status_error"
                                 os._exit(0)
 
-                # adiciona no destino apenas se encontrou algum arquivo nesta volta
                 if arquivos_encontrados_dict:
                     destinos_dict["destino"].append(arquivos_encontrados_dict)
-                    dest_counter += 1  # atualiza contador de destinos
+                    dest_counter += 1
 
-                # --- Verifica se todos os padrões já foram encontrados ---
                 if len(encontrados) == len(padroes):
                     print("\nTodos os arquivos foram encontrados e movidos com sucesso.")
                     print("Encerrando monitoramento.")
-                    print("Lista de arquivos movidos:", destinos_dict)  # <-- opcional para debug
+                    print("Lista de arquivos movidos:", destinos_dict)
                     print("DESTINOS_DICT_JSON:", json.dumps(destinos_dict, ensure_ascii=False))
                     status_done = "status_success"
                     os._exit(0)

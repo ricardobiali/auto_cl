@@ -15,30 +15,59 @@ from backend.sap_manager.ysrelcont import executar_ysrelcont
 from backend.sap_manager.ko03 import executar_ko03
 from backend.sap_manager.ks13 import executar_ks13
 
-# --- Caminho base persistente ---
-if getattr(sys, "frozen", False):
-    base_dir = Path(sys.executable).parent  # pasta onde o .exe está
-else:
-    base_dir = Path(__file__).resolve().parent.parent.parent
 
-# Caminho do requests.json
-requests_path = base_dir / "frontend" / "requests.json"
+# =========================================================
+# ✅ ALTERAÇÃO MÍNIMA: requests.json agora vem do AppData
+# =========================================================
+APP_NAME = "AUTO_CL"
+
+def _requests_path_appdata() -> Path:
+    """
+    requests.json persistente em AppData:
+    %LOCALAPPDATA%\\AUTO_CL\\requests.json
+    """
+    base = os.environ.get("LOCALAPPDATA")
+    if base:
+        appdata_dir = Path(base) / APP_NAME
+    else:
+        appdata_dir = Path.home() / f".{APP_NAME.lower()}"
+    appdata_dir.mkdir(parents=True, exist_ok=True)
+    return appdata_dir / "requests.json"
+
+
+# Caminho do requests.json (centralizado em AppData)
+requests_path = _requests_path_appdata()
 
 if not requests_path.exists():
-    raise FileNotFoundError(f"Arquivo requests.json não encontrado em: {requests_path}")
+    print(f"[ERRO] Arquivo requests.json não encontrado em: {requests_path}")
+    sys.exit(1)
 
 # Lê o arquivo JSON
-with open(requests_path, "r", encoding="utf-8") as f:
-    data = json.load(f)
+try:
+    with open(requests_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+except Exception as e:
+    print(f"[ERRO] Falha ao ler requests.json ({requests_path}): {e}")
+    sys.exit(1)
+
 
 # --- NOVO BLOCO: monta lista de arquivos a processar ---
 files_reduzida = []
 
 # Caso o JSON siga o novo formato com bloco "destino"
 if "destino" in data:
-    for destino_dict in data["destino"]:
-        for key in sorted(destino_dict.keys(), key=lambda x: int(x.replace("file_completa", "")) if x != "file_completa" else 0):
-            path_file = destino_dict[key]
+    destino_block = data.get("destino", [])
+    if not isinstance(destino_block, list):
+        destino_block = [destino_block]
+
+    for destino_dict in destino_block:
+        if not isinstance(destino_dict, dict):
+            continue
+        for key in sorted(
+            destino_dict.keys(),
+            key=lambda x: int(x.replace("file_completa", "")) if x.startswith("file_completa") and x != "file_completa" else 0
+        ):
+            path_file = destino_dict.get(key)
             if path_file and os.path.exists(path_file):
                 files_reduzida.append(path_file)
 else:
@@ -48,8 +77,17 @@ else:
 
 # Extrai path3 do bloco "paths"
 path3_value = ""
-if "paths" in data and len(data["paths"]) > 0:
-    path3_value = data["paths"][0].get("path3", "")
+if "paths" in data and isinstance(data["paths"], list) and len(data["paths"]) > 0:
+    path3_value = (data["paths"][0].get("path3", "") or "").strip()
+
+if not path3_value:
+    print("[ERRO] 'path3' vazio no requests.json (paths[0].path3).")
+    sys.exit(1)
+
+if not files_reduzida:
+    print("[ERRO] Nenhum arquivo válido encontrado para processar (destino/file_reduzida).")
+    print("status_error")
+    sys.exit(1)
 
 # --- Processa cada arquivo da lista em sequência ---
 for path_origin in files_reduzida:
@@ -311,35 +349,35 @@ for path_origin in files_reduzida:
         # Dicionários de padrões
         diret_dict = {
             "LOEP": ([
-                "LMS*", "US-LOG*", "US-SOEP*", "US-AP*", "LOEP*", "5331541*", "53337*", "53483*", 
-                "53531*", "53670*", "53671*", "536769*", "5367700*", "536771*", "536841*", "53684762", 
+                "LMS*", "US-LOG*", "US-SOEP*", "US-AP*", "LOEP*", "5331541*", "53337*", "53483*",
+                "53531*", "53670*", "53671*", "536769*", "5367700*", "536771*", "536841*", "53684762",
                 "53684763", "53684764", "53684765", "53684766", "53687*"
                 ]),
             "POÇOS": ([
-                "POCOS*", "CPM*", "EP-CPM*", "E&P-CPM*", "EPCPM*", "522*", "5237*", "52380*", 
-                "5239*", "529*", "529008*", "5294*", "5298*", "5309037*", "5309038*", "53090409", 
-                "5309041*", "5309042*", "53090430", "53090431", "53090432", "53090433", "5309045*", 
-                "5309046*", "53176439", "5317644*", "53315420", "53335*", "53485*", "534875*", 
-                "53561*", "53598*", "53626885", "53660*", "536695*", "536744*", "536755*", "536756*", 
-                "53676457", "53676458", "53684768", "53684769", "5370663*", "5370664*", "537585*", 
+                "POCOS*", "CPM*", "EP-CPM*", "E&P-CPM*", "EPCPM*", "522*", "5237*", "52380*",
+                "5239*", "529*", "529008*", "5294*", "5298*", "5309037*", "5309038*", "53090409",
+                "5309041*", "5309042*", "53090430", "53090431", "53090432", "53090433", "5309045*",
+                "5309046*", "53176439", "5317644*", "53315420", "53335*", "53485*", "534875*",
+                "53561*", "53598*", "53626885", "53660*", "536695*", "536744*", "536755*", "536756*",
+                "53676457", "53676458", "53684768", "53684769", "5370663*", "5370664*", "537585*",
                 "537586*", "537589*"
                 ]),
             "SUB": ([
-                "E&P-SERV*", "SUB*", "IPSUB*", "500*", "52382*", "52388*", "5308*", "530902*", "5309047*", 
-                "5309048*", "530905*", "532*", "53315421", "53336*", "534879*", "5355*", "53564*", "53567*", 
-                "53592*", "53626886", "536694*", "536745*", "53679*", "53681*", "5370666*", "5370667*", 
+                "E&P-SERV*", "SUB*", "IPSUB*", "500*", "52382*", "52388*", "5308*", "530902*", "5309047*",
+                "5309048*", "530905*", "532*", "53315421", "53336*", "534879*", "5355*", "53564*", "53567*",
+                "53592*", "53626886", "536694*", "536745*", "53679*", "53681*", "5370666*", "5370667*",
                 "53739*"
                 ]),
             "SRGE": ([
-                "SH*", "SRGE*", "53535*", "53560*", "5357*", "5361*", "53625*", "536261*", "536262*", 
-                "536757*", "536758*", "5367644*", "53676450", "5367702*", "53682*", "536848*", "53685*", 
-                "53686*", "5369*", "53709*", "5372*", "53734*", "53737*", "53751*", "53756*", "537583*", 
+                "SH*", "SRGE*", "53535*", "53560*", "5357*", "5361*", "53625*", "536261*", "536262*",
+                "536757*", "536758*", "5367644*", "53676450", "5367702*", "53682*", "536848*", "53685*",
+                "53686*", "5369*", "53709*", "5372*", "53734*", "53737*", "53751*", "53756*", "537583*",
                 "53759*"
                 ]),
             "EXP": ([
-                "EXP*", "AEXP*", "OEXP*", "508*", "510*", "512*", "52384*", "5309039*", "53090400", 
-                "53090401", "53090402", "53090403", "53090404", "53090405", "53090406", "53090407", 
-                "53090408", "53090434", "53090435", "53090436", "53090437", "53090438", "53090439", 
+                "EXP*", "AEXP*", "OEXP*", "508*", "510*", "512*", "52384*", "5309039*", "53090400",
+                "53090401", "53090402", "53090403", "53090404", "53090405", "53090406", "53090407",
+                "53090408", "53090434", "53090435", "53090436", "53090437", "53090438", "53090439",
                 "53176435", "53176436", "53176437", "53176438"
                 ]),
         }
@@ -405,7 +443,7 @@ for path_origin in files_reduzida:
     try:
         # Lê o CSV e salva em Excel
         df = pd.read_csv(caminho_saida, sep=";", encoding="utf-8", low_memory=False, dtype=str)
-        
+
         # Colunas que queremos converter para numérico (mesmo nome que você já usou)
         colunas_formatar = [
             "Valor/Moeda obj",
@@ -419,15 +457,13 @@ for path_origin in files_reduzida:
         # Converte as colunas formatadas em strings no padrão "1.234,56" para float 1234.56
         for col in colunas_formatar:
             if col in df.columns:
-                # substitui pontos de milhares e troca vírgula por ponto decimal
                 cleaned = (
                     df[col]
-                    .astype(str)                    # garante string
-                    .str.replace(".", "", regex=False)  # remove separador de milhar
-                    .str.replace(",", ".", regex=False) # decimal point
+                    .astype(str)
+                    .str.replace(".", "", regex=False)
+                    .str.replace(",", ".", regex=False)
                     .str.strip()
                 )
-                # converte para numérico (float) — valores inválidos virarão NaN
                 df[col] = pd.to_numeric(cleaned, errors="coerce")
 
         # Salva o DataFrame (com colunas numéricas) direto em Excel
@@ -446,18 +482,15 @@ for path_origin in files_reduzida:
                 col_idx = header[col]
                 for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
                     for cell in row:
-                        # Se for valor numérico (float/int), aplica number_format
                         if isinstance(cell.value, (int, float)):
                             cell.number_format = '#,##0.00'
 
         wb.save(arquivo_excel)
 
-        # Marca status de sucesso
         status_done = "status_success"
         print(status_done)
 
     except Exception as e:
-        # Caso dê erro, marca status de erro
         status_done = "status_error"
         print(f"Ocorreu um erro: {e}")
         print(status_done)

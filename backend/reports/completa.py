@@ -1,126 +1,94 @@
-import os
+import pandas as pd
 from pathlib import Path
-import sys
-import shutil
-import glob
-import time
 import json
-from datetime import datetime
+import os
+import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from backend.sap_manager.sap_connect import get_sap_free_session, start_sap_manager, start_connection
+APP_NAME = "AUTO_CL"
 
-try:
-    # Inicializa SAP
-    started_by_script = start_sap_manager()
-    start_connection()
-    session = get_sap_free_session()
-
-    # Caminho atual do script
-    current_dir = Path(__file__).resolve()
-    username = os.getlogin()
-
-    # Sobe até encontrar a pasta 'auto_cl_prototype'
-    root_dir = current_dir
-    while root_dir.name != "auto_cl_prototype":
-        if root_dir.parent == root_dir:
-            raise FileNotFoundError("Pasta 'auto_cl_prototype' não encontrada.")
-        root_dir = root_dir.parent
-
-    # Caminho do requests.json
-    requests_path = os.path.join(
-        fr"{root_dir}\frontend",
-        "requests.json"
-    )
-
-    # Valores padrão
-    defprojeto = fase = status = datainicio = exercicio = trimestre = path1 = "DEFAULT"
-
-    # Lê o arquivo requests.json e extrai dados do primeiro item
-    if os.path.exists(requests_path):
-        with open(requests_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            requests_list = data.get("requests", [])
-            paths_list = data.get("paths", [])
-
-            if requests_list and isinstance(requests_list, list):
-                first = requests_list[0]
-                defprojeto = first.get("defprojeto", "").strip()
-                fase = first.get("fase", "").strip()
-                status = first.get("status", "").strip()
-                datainicio = first.get("datainicio", "").strip()
-                exercicio = first.get("exercicio", "").strip()
-                trimestre = first.get("trimestre", "").strip()
-
-                # 🗓️ Converte ddmmaaaa → aaaammdd
-                if len(datainicio) == 8 and datainicio.isdigit():
-                    datainicio = datainicio[4:] + datainicio[2:4] + datainicio[:2]
-                else:
-                    print(f"Formato inesperado de datainicio: {datainicio}")
-
-            else:
-                print("Nenhum registro em 'requests', usando valores padrão.")
-
-            # Lê path1 do primeiro item em 'paths', se existir
-            if paths_list and isinstance(paths_list, list):
-                path1 = paths_list[0].get("path1", "").strip()
-                if not path1:
-                    print("'path1' vazio no requests.json, usando padrão.")
-            else:
-                print("Nenhum registro em 'paths', usando padrão.")
+def _requests_path_appdata() -> Path:
+    """
+    requests.json persistente em AppData:
+    %LOCALAPPDATA%\AUTO_CL\requests.json
+    """
+    base = os.environ.get("LOCALAPPDATA")
+    if base:
+        appdata_dir = Path(base) / APP_NAME
     else:
-        print(f"Arquivo requests.json não encontrado em {requests_path}, usando valores padrão.")
+        appdata_dir = Path.home() / f".{APP_NAME.lower()}"
+    appdata_dir.mkdir(parents=True, exist_ok=True)
+    return appdata_dir / "requests.json"
 
-    # Caminhos de origem e destino
-    origem = fr"C:\Users\{username}\PETROBRAS\GPP-E&P RXC GDI - Conteúdo Local\RGIT"
-    destino = path1  # ✅ Agora usa path1 em vez de caminho fixo
 
-    # 📅 Data corrente no formato aaaammdd
-    datacorrente = datetime.now().strftime("%Y%m%d")
+# Caminho do requests.json (centralizado em AppData)
+requests_path = _requests_path_appdata()
 
-    # Padrão dinâmico de arquivo
-    padrao = f"RGT_RCL.CSV_{username}_{defprojeto}_{fase}_{status}_{datainicio}_{exercicio}_{trimestre}T_{datacorrente}_*.txt"
+if not requests_path.exists():
+    print(f"[ERRO] Arquivo requests.json não encontrado em: {requests_path}")
+    sys.exit(1)
 
-    # Intervalo entre verificações (em segundos)
-    intervalo_busca = 120
-
-    # --- Abre SM37 e marca PRELIM ---
-    session.findById("wnd[0]/tbar[0]/okcd").text = "/nsm37"
-    session.findById("wnd[0]").sendVKey(0)
-    session.findById("wnd[0]/usr/chkBTCH2170-PRELIM").selected = True
-    session.findById("wnd[0]/tbar[1]/btn[8]").press()
-
-    print(f"Iniciando monitoramento da pasta:\n   {origem}")
-    print(f"Aguardando arquivo com padrão: {padrao}\n")
-
-    while True:
-        arquivos = glob.glob(os.path.join(origem, padrao))
-        session.findById("wnd[0]/tbar[1]/btn[8]").press()
-
-        if arquivos:
-            for arquivo in arquivos:
-                nome_arquivo = os.path.basename(arquivo)
-                destino_final = os.path.join(destino, nome_arquivo)
-                try:
-                    shutil.move(arquivo, destino_final)
-                    print(f"\n [{datetime.now().strftime('%H:%M:%S')}] Arquivo encontrado e movido com sucesso:")
-                    print(f"   ➜ {nome_arquivo}")
-                    print(f"   ➜ De: {origem}")
-                    print(f"   ➜ Para: {destino_final}")
-                    print("\nEncerrando monitoramento.")
-                    
-                    # ✅ Marca status de sucesso
-                    status_done = "status_success"
-                    print(status_done)
-                    exit(0)
-                except Exception as e:
-                    status_done = "status_error"
-                    print(status_done)
-                    time.sleep(intervalo_busca)
-        else:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Arquivo ainda não encontrado... tentando novamente em {intervalo_busca} segundos.")
-            time.sleep(intervalo_busca)
-
+# Lê o arquivo JSON
+try:
+    with open(requests_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
 except Exception as e:
-    print(f"Erro geral durante a execução: {e}")
-    status_done = "status_error"
+    print(f"[ERRO] Falha ao ler requests.json ({requests_path}): {e}")
+    sys.exit(1)
+
+# Extrai o path2 do bloco "paths"
+path2_value = ""
+if "paths" in data and isinstance(data["paths"], list) and len(data["paths"]) > 0:
+    path2_value = (data["paths"][0].get("path2", "") or "").strip()
+
+# Caminho de destino
+if not path2_value:
+    print("[ERRO] 'path2' vazio no requests.json (paths[0].path2).")
+    sys.exit(1)
+
+pasta_excel = Path(path2_value)
+pasta_excel.mkdir(parents=True, exist_ok=True)
+
+# 🔹 Coleta todos os arquivos file_completaN do bloco "destino"
+files_completa = []
+destino_list = data.get("destino", [])
+
+if not isinstance(destino_list, list):
+    destino_list = [destino_list]
+
+for destino_dict in destino_list:
+    if not isinstance(destino_dict, dict):
+        continue
+
+    # Ordena as chaves file_completa1, 2, 3, ...
+    def _key_sort(x: str) -> int:
+        try:
+            return int(x.replace("file_completa", ""))
+        except Exception:
+            return 0
+
+    for key in sorted(destino_dict.keys(), key=_key_sort):
+        file_path = destino_dict.get(key)
+        if file_path and os.path.exists(file_path):
+            files_completa.append(file_path)
+        else:
+            print(f"Aviso: arquivo não encontrado - {file_path}")
+
+if not files_completa:
+    print("[ERRO] Nenhum arquivo 'file_completaN' válido encontrado no requests.json.")
+    print("status_error")
+    sys.exit(1)
+
+# Processa cada arquivo em sequência
+for path_txtOrigin in files_completa:
+    arquivo_txt = Path(path_txtOrigin)
+    nome_excel = arquivo_txt.stem + ".xlsx"
+    arquivo_excel = pasta_excel / nome_excel
+
+    try:
+        df = pd.read_csv(arquivo_txt, sep=";", encoding="utf-8")
+        df.to_excel(arquivo_excel, index=False)
+        print(f"[OK] Convertido: {arquivo_txt.name} -> {arquivo_excel.name}")
+    except Exception as e:
+        print(f"[ERRO] Falha ao converter {arquivo_txt}: {e}")
+
+print("status_success")
