@@ -6,7 +6,10 @@ Sem alterar nada do que já está feito, quero criar novas regras para o funcion
 5. Se o switch2 ou switch3, estiver ativo isoladamente, deve abrir o diálogo para selecionar o arquivo (string com caminho e arquivo) 
 
 Rodar o requirements.txt:
-& .env\Scripts\python.exe -m pip install r- requirements.txt
+& .env\Scripts\python.exe -m pip install -r requirements.txt
 
 gerar o .exe:
+pyinstaller --noconfirm AUTO_CL.spec
+
+.exe antigo:
 & .env\Scripts\python.exe -m PyInstaller --noconfirm --onedir --windowed --icon="C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl\frontend\media\BR.ico" --add-data "frontend;frontend" --add-data "backend;backend" --hidden-import "eel" --hidden-import "tkinter" --runtime-hook hook_logging.py --add-data "logging.ini;." --name "pacl_v_1_1_3" main_app.py
