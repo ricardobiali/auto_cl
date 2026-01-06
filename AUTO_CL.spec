@@ -6,7 +6,7 @@ from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 # ✅ Mais estável do que Path.cwd()
 PROJECT_ROOT = Path(__spec__.origin).resolve().parent
 
-APP_NAME = "pacl_v_1_2_0"
+APP_NAME = "pacl_v_1_2_1"
 ICON_PATH = r"C:\Users\U33V\OneDrive - PETROBRAS\Desktop\python\auto_cl\frontend\media\BR.ico"
 
 # -----------------------------
