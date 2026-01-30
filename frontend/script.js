@@ -43,6 +43,12 @@ document.addEventListener('DOMContentLoaded', function () {
     atualizarNomeUsuario();
 
     // =====================================================
+    // CONTROLE: modo planilha importada
+    // - se true: ao clicar Executar, ignora tabela e NÃO reimporta
+    // =====================================================
+    let importAtivo = false;
+
+    // =====================================================
     // TABELA (seu código original)
     // =====================================================
     const tbody = document.getElementById('rows-body');
@@ -70,56 +76,70 @@ document.addEventListener('DOMContentLoaded', function () {
         importStatus.textContent = text || '';
     }
 
+    function getSwitches() {
+        return {
+            report_SAP: document.getElementById('switch1')?.checked || false,
+            completa: document.getElementById('switch2')?.checked || false,
+            reduzida: document.getElementById('switch3')?.checked || false,
+            diretos: document.getElementById('switch4')?.checked || false,
+            indiretos: document.getElementById('switch5')?.checked || false,
+            estoques: document.getElementById('switch6')?.checked || false
+        };
+    }
+
+    function getPathsArray() {
+        return [{
+            path1: document.querySelector("input[name='path1']")?.value || "",
+            path2: document.querySelector("input[name='path2']")?.value || "",
+            path3: document.querySelector("input[name='path3']")?.value || "",
+            path4: document.querySelector("input[name='path4']")?.value || "",
+            path5: document.querySelector("input[name='path5']")?.value || "",
+            path6: document.querySelector("input[name='path6']")?.value || ""
+        }];
+    }
+
     importBtn.addEventListener('click', async () => {
         try {
             setImportStatus('info', 'Importando...');
 
-            const switches = {
-                report_SAP: document.getElementById('switch1')?.checked || false,
-                completa: document.getElementById('switch2')?.checked || false,
-                reduzida: document.getElementById('switch3')?.checked || false,
-                diretos: document.getElementById('switch4')?.checked || false,
-                indiretos: document.getElementById('switch5')?.checked || false,
-                estoques: document.getElementById('switch6')?.checked || false
-            };
+            const switches = getSwitches();
 
             if (!switches.report_SAP) {
                 setImportStatus('err', 'Ative o Switch 1 para importar.');
                 return;
             }
 
-            const paths = {
-                path1: document.querySelector("input[name='path1']")?.value || "",
-                path2: document.querySelector("input[name='path2']")?.value || "",
-                path3: document.querySelector("input[name='path3']")?.value || "",
-                path4: document.querySelector("input[name='path4']")?.value || "",
-                path5: document.querySelector("input[name='path5']")?.value || "",
-                path6: document.querySelector("input[name='path6']")?.value || ""
-            };
+            const pathsArr = getPathsArray();
+            const pathsObj = pathsArr[0];
 
-            // chama o backend
-            const res = await eel.import_planilha(switches, paths)();
+            // chama o backend (importa e salva no requests.json, mas NÃO executa)
+            const res = await eel.import_planilha(switches, pathsObj)();
 
             if (!res) {
                 setImportStatus('err', 'Falha ao importar.');
+                importAtivo = false;
                 return;
             }
 
             if (res.status === 'cancelled') {
                 setImportStatus('', '');
+                importAtivo = false;
                 return;
             }
 
             if (res.status === 'imported') {
+                importAtivo = true; // ✅ ativa modo planilha
                 const n = res.imported_rows ?? '';
                 setImportStatus('ok', `Importação realizada com sucesso${n ? ` (${n} linhas)` : ''}.`);
                 return;
             }
 
             // outros status
+            importAtivo = false;
             setImportStatus('err', res.error || `Erro: ${res.status}`);
         } catch (err) {
             console.error(err);
+            importAtivo = false;
             setImportStatus('err', 'Erro ao importar planilha.');
         }
     });
@@ -265,8 +285,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const anySwitchOn = s1 || s2 || s3 || s4 || s5 || s6;
 
         toggleFade(tableSection, s1);
+
+        // botão de import acompanha o switch1
         importWrapper.style.display = s1 ? 'flex' : 'none';
-        if (!s1) setImportStatus('', '');
+        if (!s1) {
+            setImportStatus('', '');
+            importAtivo = false; // se desligou switch1, desativa modo planilha
+        }
+
         toggleFade(pathInputs.path1, s1);
         toggleFade(pathInputs.path2, s2);
         toggleFade(pathInputs.path3, s3);
@@ -309,25 +335,20 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
     }
 
-    // ✅ NOVO: renderiza logs do backend (SAP) enquanto roda
     let _lastLogsLen = 0;
 
     function renderLogsAoVivo(logs) {
         if (!Array.isArray(logs) || logs.length === 0) return;
 
-        // se resetou (novo job), reinicia
         if (logs.length < _lastLogsLen) _lastLogsLen = 0;
 
-        // adiciona somente os novos
         const novos = logs.slice(_lastLogsLen);
         _lastLogsLen = logs.length;
         if (novos.length === 0) return;
 
-        // garante que o container está visível
         avisosContainer.style.display = 'block';
         avisosContainer.classList.add('fade-in');
 
-        // adiciona no final do <ul>
         const html = novos.map(l => `
             <li style="display:flex; align-items:center; gap:6px;">
                 <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
@@ -337,8 +358,6 @@ document.addEventListener('DOMContentLoaded', function () {
         `).join('');
 
         avisosContent.insertAdjacentHTML('beforeend', html);
-
-        // rola pra baixo
         avisosContainer.scrollTop = avisosContainer.scrollHeight;
     }
 
@@ -365,27 +384,23 @@ document.addEventListener('DOMContentLoaded', function () {
     function atualizarAvisoEmExecucao(texto) {
         if (!texto) return;
 
-        // tenta achar o primeiro aviso "principal" (o que tem spinner)
         const principal = avisosContent.querySelector("li .spinner-border + span");
         if (principal) {
             principal.textContent = texto;
         }
     }
 
-
     // =====================================================
-    // Polling status (✅ agora também puxa logs)
+    // Polling status
     // =====================================================
     async function checarStatus() {
         try {
             const status = await eel.get_job_status()();
 
-            // ✅ NOVO: mostra logs enquanto roda
             if (status?.logs) {
                 renderLogsAoVivo(status.logs);
             }
 
-            // ✅ NOVO: mensagem viva de progresso
             if (status.running && status.message) {
                 atualizarAvisoEmExecucao(status.message);
             }
@@ -418,76 +433,69 @@ document.addEventListener('DOMContentLoaded', function () {
     // =====================================================
     if (runBtn) {
         runBtn.addEventListener('click', async function () {
-            const data = [];
-            for (let i = 1; i <= rows; i++) {
-                const rawDate = document.querySelector(`[name="datainicio_${i}"]`).value;
-                let formattedDate = "";
-                if (rawDate) {
-                    const [year, month, day] = rawDate.split("-");
-                    formattedDate = `${day}${month}${year}`;
+
+            const switches = getSwitches();
+            const paths = getPathsArray();
+
+            // ✅ Se planilha foi importada, NÃO usa tabela (nem reimporta)
+            // ✅ Apenas atualiza paths/switches e executa
+            let payload;
+
+            if (importAtivo) {
+                payload = { paths: paths, switches: switches }; // sem requests
+            } else {
+                const data = [];
+                for (let i = 1; i <= rows; i++) {
+                    const rawDate = document.querySelector(`[name="datainicio_${i}"]`).value;
+                    let formattedDate = "";
+                    if (rawDate) {
+                        const [year, month, day] = rawDate.split("-");
+                        formattedDate = `${day}${month}${year}`;
+                    }
+
+                    const rowObj = {
+                        empresa: document.querySelector(`[name="empresa_${i}"]`).value.trim(),
+                        exercicio: document.querySelector(`[name="exercicio_${i}"]`).value.trim(),
+                        trimestre: document.querySelector(`[name="trimestre_${i}"]`).value.trim(),
+                        campo: document.querySelector(`[name="campo_${i}"]`).value.trim(),
+                        fase: document.querySelector(`[name="fase_${i}"]`).value.trim(),
+                        status: document.querySelector(`[name="status_${i}"]`).value.trim(),
+                        versao: document.querySelector(`[name="versao_${i}"]`).value.trim(),
+                        secao: document.querySelector(`[name="secao_${i}"]`).value.trim(),
+                        defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
+                        datainicio: formattedDate,
+                        bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim(),
+                        rit: document.querySelector(`[name="rit_${i}"]`).checked
+                    };
+
+                    const hasValue = Object.entries(rowObj)
+                        .filter(([key]) => key !== "rit")
+                        .some(([, value]) => value !== "");
+                    if (hasValue) data.push(rowObj);
                 }
 
-                const rowObj = {
-                    empresa: document.querySelector(`[name="empresa_${i}"]`).value.trim(),
-                    exercicio: document.querySelector(`[name="exercicio_${i}"]`).value.trim(),
-                    trimestre: document.querySelector(`[name="trimestre_${i}"]`).value.trim(),
-                    campo: document.querySelector(`[name="campo_${i}"]`).value.trim(),
-                    fase: document.querySelector(`[name="fase_${i}"]`).value.trim(),
-                    status: document.querySelector(`[name="status_${i}"]`).value.trim(),
-                    versao: document.querySelector(`[name="versao_${i}"]`).value.trim(),
-                    secao: document.querySelector(`[name="secao_${i}"]`).value.trim(),
-                    defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
-                    datainicio: formattedDate,
-                    bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim(),
-                    rit: document.querySelector(`[name="rit_${i}"]`).checked
-                };
-
-                const hasValue = Object.entries(rowObj)
-                    .filter(([key]) => key !== "rit")
-                    .some(([, value]) => value !== "");
-                if (hasValue) data.push(rowObj);
+                payload = { paths: paths, requests: data, switches: switches };
             }
 
-            const paths = [{
-                path1: document.querySelector("input[name='path1']").value || "",
-                path2: document.querySelector("input[name='path2']")?.value || "",
-                path3: document.querySelector("input[name='path3']")?.value || "",
-                path4: document.querySelector("input[name='path4']")?.value || "",
-                path5: document.querySelector("input[name='path5']")?.value || "",
-                path6: document.querySelector("input[name='path6']")?.value || ""
-            }];
-
-            const switches = {
-                report_SAP: document.getElementById('switch1').checked,
-                completa: document.getElementById('switch2').checked,
-                reduzida: document.getElementById('switch3').checked,
-                diretos: document.getElementById('switch4').checked,
-                indiretos: document.getElementById('switch5').checked,
-                estoques: document.getElementById('switch6').checked
-            };
-
-            const res = await eel.import_planilha(switches, paths)();
-            console.log(res);
-
-            const payload = { paths: paths, requests: data, switches: switches };
-
-            // ✅ reset do log incremental (novo job)
+            // reset do log incremental
             _lastLogsLen = 0;
 
             const mensagens = [];
-            if (document.getElementById('switch1')?.checked) mensagens.push("Aguardando requisição da base do SAP");
-            if (document.getElementById('switch2')?.checked) mensagens.push("Aguardando relatório completo");
-            if (document.getElementById('switch3')?.checked) mensagens.push("Aguardando relatório reduzido");
-            if (document.getElementById('switch4')?.checked) mensagens.push("Aguardando relatório de Gastos Diretos");
-            if (document.getElementById('switch5')?.checked) mensagens.push("Aguardando relatório de Gastos Indiretos");
-            if (document.getElementById('switch6')?.checked) mensagens.push("Aguardando relatório de Estoques");
+            if (switches.report_SAP) mensagens.push("Aguardando requisição da base do SAP");
+            if (switches.completa) mensagens.push("Aguardando relatório completo");
+            if (switches.reduzida) mensagens.push("Aguardando relatório reduzido");
+            if (switches.diretos) mensagens.push("Aguardando relatório de Gastos Diretos");
+            if (switches.indiretos) mensagens.push("Aguardando relatório de Gastos Indiretos");
+            if (switches.estoques) mensagens.push("Aguardando relatório de Estoques");
             if (mensagens.length > 0) exibirAvisos(mensagens);
 
             hideSectionsOnRun();
             toggleFade(cancelSection, true);
 
+            // ✅ salva requests.json
             await eel.save_requests(payload)();
 
+            // ✅ executa
             const result = await eel.start_job(switches, paths[0])();
             if (result.status === "started") {
                 checarStatus();
@@ -498,8 +506,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
-            console.log("Linhas:", data);
             console.log("Paths:", paths);
+            if (!importAtivo) console.log("Linhas:", payload.requests);
         });
     }
 
