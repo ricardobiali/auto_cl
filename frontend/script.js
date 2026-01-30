@@ -129,6 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (res.status === 'imported') {
                 importAtivo = true; // ✅ ativa modo planilha
+                toggleFade(tableSection, false);
                 const n = res.imported_rows ?? '';
                 setImportStatus('ok', `Importação realizada com sucesso${n ? ` (${n} linhas)` : ''}.`);
                 return;
@@ -284,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const anySwitchOn = s1 || s2 || s3 || s4 || s5 || s6;
 
-        toggleFade(tableSection, s1);
+        toggleFade(tableSection, s1 && !importAtivo);
 
         // botão de import acompanha o switch1
         importWrapper.style.display = s1 ? 'flex' : 'none';
