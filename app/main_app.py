@@ -14,9 +14,8 @@ from app.state import JobState
 from app.services import user_data
 from app.services.job_runner import JobRunner
 
+from app.services.dialogs import selecionar_diretorio, selecionar_arquivo, selecionar_planilha
 from app.eel_api import register_eel_api
-from app.services.dialogs import selecionar_diretorio, selecionar_arquivo
-
 
 # ----------------------------
 # ✅ Runner mode (PyInstaller)
@@ -119,6 +118,7 @@ def main() -> None:
         user_data_module=user_data,
         selecionar_diretorio_cb=selecionar_diretorio,
         selecionar_arquivo_cb=selecionar_arquivo,
+        selecionar_planilha_cb=selecionar_planilha,
     )
 
     try:

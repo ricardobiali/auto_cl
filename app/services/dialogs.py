@@ -40,7 +40,7 @@ def _try_attach_to_foreground(root: tk.Tk) -> None:
         # GWL_HWNDPARENT = -8
         ctypes.windll.user32.SetWindowLongW(root.winfo_id(), -8, hwnd_main)
     except Exception:
-        # sem print aqui pra não poluir; logging é melhor, mas pode deixar silencioso
+        # silencioso por padrão
         pass
 
 
@@ -65,3 +65,19 @@ def selecionar_arquivo() -> list[str]:
         filetypes=[("Arquivos TXT", "*.txt")],
     )
     return list(arquivos) if arquivos else []
+
+
+def selecionar_planilha() -> str:
+    """
+    Seleciona uma planilha Excel no padrão AUTO_CL.
+    Retorna caminho do arquivo ou "" se cancelado.
+    """
+    root = _get_root()
+    _try_attach_to_foreground(root)
+
+    file_selected = filedialog.askopenfilename(
+        parent=root,
+        title="Selecione a planilha (.xlsx) no padrão AUTO_CL",
+        filetypes=[("Planilhas Excel", "*.xlsx *.xlsm")],
+    )
+    return file_selected or ""

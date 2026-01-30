@@ -46,7 +46,93 @@ document.addEventListener('DOMContentLoaded', function () {
     // TABELA (seu código original)
     // =====================================================
     const tbody = document.getElementById('rows-body');
-    const rows = 20;
+
+    // =====================================================
+    // BOTÃO: Importar planilha (visível só com switch1)
+    // =====================================================
+    const tableContainer = document.querySelector('.table-container');
+
+    const importWrapper = document.createElement('div');
+    importWrapper.className = 'import-wrapper';
+    importWrapper.style.display = 'none'; // começa oculto
+
+    const importBtn = document.createElement('button');
+    importBtn.textContent = 'Importar planilha…';
+    importBtn.className = 'import-planilha-btn';
+
+    const importStatus = document.createElement('span');
+    importStatus.className = 'import-status';
+    importStatus.textContent = '';
+
+    function setImportStatus(kind, text) {
+        importStatus.classList.remove('ok', 'err', 'info');
+        if (kind) importStatus.classList.add(kind);
+        importStatus.textContent = text || '';
+    }
+
+    importBtn.addEventListener('click', async () => {
+        try {
+            setImportStatus('info', 'Importando...');
+
+            const switches = {
+                report_SAP: document.getElementById('switch1')?.checked || false,
+                completa: document.getElementById('switch2')?.checked || false,
+                reduzida: document.getElementById('switch3')?.checked || false,
+                diretos: document.getElementById('switch4')?.checked || false,
+                indiretos: document.getElementById('switch5')?.checked || false,
+                estoques: document.getElementById('switch6')?.checked || false
+            };
+
+            if (!switches.report_SAP) {
+                setImportStatus('err', 'Ative o Switch 1 para importar.');
+                return;
+            }
+
+            const paths = {
+                path1: document.querySelector("input[name='path1']")?.value || "",
+                path2: document.querySelector("input[name='path2']")?.value || "",
+                path3: document.querySelector("input[name='path3']")?.value || "",
+                path4: document.querySelector("input[name='path4']")?.value || "",
+                path5: document.querySelector("input[name='path5']")?.value || "",
+                path6: document.querySelector("input[name='path6']")?.value || ""
+            };
+
+            // chama o backend
+            const res = await eel.import_planilha(switches, paths)();
+
+            if (!res) {
+                setImportStatus('err', 'Falha ao importar.');
+                return;
+            }
+
+            if (res.status === 'cancelled') {
+                setImportStatus('', '');
+                return;
+            }
+
+            if (res.status === 'imported') {
+                const n = res.imported_rows ?? '';
+                setImportStatus('ok', `Importação realizada com sucesso${n ? ` (${n} linhas)` : ''}.`);
+                return;
+            }
+
+            // outros status
+            setImportStatus('err', res.error || `Erro: ${res.status}`);
+        } catch (err) {
+            console.error(err);
+            setImportStatus('err', 'Erro ao importar planilha.');
+        }
+    });
+
+    importWrapper.appendChild(importBtn);
+    importWrapper.appendChild(importStatus);
+
+    // insere acima da tabela
+    if (tableContainer) {
+        tableContainer.parentNode.insertBefore(importWrapper, tableContainer);
+    }
+
+    const rows = 10;
 
     for (let i = 1; i <= rows; i++) {
         const tr = document.createElement('tr');
@@ -179,6 +265,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const anySwitchOn = s1 || s2 || s3 || s4 || s5 || s6;
 
         toggleFade(tableSection, s1);
+        importWrapper.style.display = s1 ? 'flex' : 'none';
+        if (!s1) setImportStatus('', '');
         toggleFade(pathInputs.path1, s1);
         toggleFade(pathInputs.path2, s2);
         toggleFade(pathInputs.path3, s3);
@@ -309,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<i class="bi bi-x" style="color: red; font-size:1.1rem;"></i>',
                     status.message
                 );
-                
+
                 const newBtn = cancelBtn.cloneNode(true);
                 newBtn.textContent = "Reiniciar";
                 newBtn.onclick = () => window.location.reload();
@@ -377,6 +465,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 indiretos: document.getElementById('switch5').checked,
                 estoques: document.getElementById('switch6').checked
             };
+
+            const res = await eel.import_planilha(switches, paths)();
+            console.log(res);
 
             const payload = { paths: paths, requests: data, switches: switches };
 
