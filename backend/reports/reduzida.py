@@ -442,56 +442,55 @@ for path_origin in files_reduzida:
 
 # =========================================================
 # BLOCO OPCIONAL – GERAÇÃO DE EXCEL
-# Atualmente DESATIVADO por decisão de negócio
 # Para reativar, basta remover os comentários abaixo
 # =========================================================
 
     try:
-        # # Lê o CSV e salva em Excel
-        # df = pd.read_csv(caminho_saida, sep=";", encoding="utf-8", low_memory=False, dtype=str)
+        # Lê o CSV e salva em Excel
+        df = pd.read_csv(caminho_saida, sep=";", encoding="utf-8", low_memory=False, dtype=str)
 
-        # # Colunas que queremos converter para numérico (mesmo nome que você já usou)
-        # colunas_formatar = [
-        #     "Valor/Moeda obj",
-        #     "Valor total em reais",
-        #     "Val suj cont loc R$",
-        #     "Valor cont local R$",
-        #     "Valor/moeda ACC",
-        #     "Estrangeiro $"
-        # ]
+        # Colunas que queremos converter para numérico (mesmo nome que você já usou)
+        colunas_formatar = [
+            "Valor/Moeda obj",
+            "Valor total em reais",
+            "Val suj cont loc R$",
+            "Valor cont local R$",
+            "Valor/moeda ACC",
+            "Estrangeiro $"
+        ]
 
-        # # Converte as colunas formatadas em strings no padrão "1.234,56" para float 1234.56
-        # for col in colunas_formatar:
-        #     if col in df.columns:
-        #         cleaned = (
-        #             df[col]
-        #             .astype(str)
-        #             .str.replace(".", "", regex=False)
-        #             .str.replace(",", ".", regex=False)
-        #             .str.strip()
-        #         )
-        #         df[col] = pd.to_numeric(cleaned, errors="coerce")
+        # Converte as colunas formatadas em strings no padrão "1.234,56" para float 1234.56
+        for col in colunas_formatar:
+            if col in df.columns:
+                cleaned = (
+                    df[col]
+                    .astype(str)
+                    .str.replace(".", "", regex=False)
+                    .str.replace(",", ".", regex=False)
+                    .str.strip()
+                )
+                df[col] = pd.to_numeric(cleaned, errors="coerce")
 
-        # # Salva o DataFrame (com colunas numéricas) direto em Excel
-        # df.to_excel(arquivo_excel, index=False)
+        # Salva o DataFrame (com colunas numéricas) direto em Excel
+        df.to_excel(arquivo_excel, index=False)
 
-        # # Abre workbook e aplica formato numérico às colunas desejadas (se existirem)
-        # wb = openpyxl.load_workbook(arquivo_excel)
-        # ws = wb.active
+        # Abre workbook e aplica formato numérico às colunas desejadas (se existirem)
+        wb = openpyxl.load_workbook(arquivo_excel)
+        ws = wb.active
 
-        # # Mapeia cabeçalho -> índice (1-based)
-        # header = {cell.value: idx for idx, cell in enumerate(ws[1], start=1)}
+        # Mapeia cabeçalho -> índice (1-based)
+        header = {cell.value: idx for idx, cell in enumerate(ws[1], start=1)}
 
-        # # Aplica formatação numérica (duas casas decimais)
-        # for col in colunas_formatar:
-        #     if col in header:
-        #         col_idx = header[col]
-        #         for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
-        #             for cell in row:
-        #                 if isinstance(cell.value, (int, float)):
-        #                     cell.number_format = '#,##0.00'
+        # Aplica formatação numérica (duas casas decimais)
+        for col in colunas_formatar:
+            if col in header:
+                col_idx = header[col]
+                for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+                    for cell in row:
+                        if isinstance(cell.value, (int, float)):
+                            cell.number_format = '#,##0.00'
 
-        # wb.save(arquivo_excel)
+        wb.save(arquivo_excel) # até aqui o excel 
 
         status_done = "status_success"
         print(status_done)

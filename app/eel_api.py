@@ -162,7 +162,46 @@ def register_eel_api(
         if state.is_running():
             return {"status": "already_running"}
 
+        # Se Completa foi marcada sem SAP, precisa escolher TXT(s) aqui
+        if switches.get("completa") and not switches.get("report_SAP"):
+            if not paths.get("file_completa"):
+                files = selecionar_arquivo_cb()  # Tk na thread principal
+                if not files:
+                    return {"status": "cancelled"}
+                paths["file_completa"] = files
+
+        # Se Reduzida foi marcada sem SAP e sem Completa, precisa escolher TXT(s) aqui
+        manual_reduzida = bool(switches.get("reduzida")) and (not switches.get("report_SAP")) and (not switches.get("completa"))
+        if manual_reduzida:
+            if not paths.get("file_reduzida"):
+                files = selecionar_arquivo_cb()  # Tk na thread principal
+                if not files:
+                    return {"status": "cancelled"}
+                paths["file_reduzida"] = files
+
+            existing = load_json(requests_path)
+
+            # desliga import mode (se estava ligado)
+            if isinstance(existing.get("imported"), dict):
+                existing["imported"]["enabled"] = False
+
+            # limpa destino (pode conter arquivos antigos)
+            existing["destino"] = []
+
+            # opcional: limpa status pra não confundir
+            # existing["status"] = [{}]
+
+            # mantém paths/switches atuais
+            existing = _set_paths_only(existing, paths)
+            existing["switches"] = switches
+
+            save_json_atomic(requests_path, existing)
+
+        # -------------------------------------------------
+        # fluxo atual (import_mode vs table_mode)
+        # -------------------------------------------------
         existing = load_json(requests_path)
+
         if _is_import_mode_enabled(existing):
             # modo planilha ativo: apenas atualiza paths e roda
             existing = _set_paths_only(existing, paths)
