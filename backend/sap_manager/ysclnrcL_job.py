@@ -9,10 +9,6 @@ import json
 
 username = os.getlogin()
 
-# ======================================================
-# ✅ ALTERAÇÃO MÍNIMA 1: garantir que o pacote "app" seja importável
-# (quando executado como script via subprocess)
-# ======================================================
 try:
     # repo_root = .../auto_cl
     repo_root = Path(__file__).resolve().parents[2]
@@ -28,14 +24,11 @@ from backend.sap_manager.sap_connect import (
     close_sap_manager,
 )
 
-# ======================================================
-# ✅ ALTERAÇÃO MÍNIMA 2: requests.json via AppData (Paths)
-# ======================================================
 from app.paths import Paths
 from app.services.file_io import load_json
 
 P = Paths.build()
-requests_path = P.requests_json  # ex: C:\Users\...\AppData\Local\AUTO_CL\requests.json
+requests_path = P.requests_json  
 
 
 def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=None, requests_data=None):
@@ -58,6 +51,8 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
         session.findById("wnd[0]/usr/ctxtPC_STAT").text = req.get("status", "")
         session.findById("wnd[0]/usr/ctxtP_VERSAO").text = req.get("versao", "")
         session.findById("wnd[0]/usr/ctxtP_SECAO").text = req.get("secao", "")
+        visao_corp = bool(req.get("visao_corp", False))
+        session.findById("wnd[0]/usr/chkP_CORP").selected = visao_corp
 
         # --- Abre filtro avançado ---
         session.findById("wnd[0]/tbar[1]/btn[19]").press()
@@ -84,7 +79,6 @@ def create_YSCLBLRIT_requests(session, init_date=None, init_time=None, interval=
         session.findById("wnd[1]/tbar[0]/btn[11]").press()
 
         print(f"Requisição {i} agendada para {str_date_plan} às {str_time_plan}")
-
 
 # Execução principal
 if __name__ == "__main__":

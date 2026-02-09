@@ -299,10 +299,13 @@ label[for="switch6"] {
     /* ajuste: 80/100/120... */
 }
 
-.table td:nth-child(13) .form-check-input {
+/* Padroniza o tamanho dos switches das colunas Visão CORP e RIT */
+.table td:nth-child(13) .form-check-input,
+.table td:nth-child(14) .form-check-input {
     width: 3.2rem;
-    /* tamanho do “trilho” */
+    /* trilho */
     height: 1.6rem;
+    /* altura */
 }
 
 .table td:nth-child(13) .form-check-input:checked {
@@ -387,4 +390,49 @@ label[for="switch6"] {
 
 .import-status.info {
     color: #555;
+}
+
+/* Larguras fixas (ajuste se quiser) */
+.table-container table th.col-bidround,
+.table-container table td.col-bidround {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+}
+
+.table-container table th.col-switch,
+.table-container table td.col-switch {
+    width: 90px;
+    min-width: 90px;
+    max-width: 90px;
+    text-align: center;
+    vertical-align: middle;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+/* Centraliza o switch (seu tdSwitch já usa d-flex justify-content-center) */
+.table-container table td.col-switch .form-check.form-switch {
+    margin: 0;
+    width: 100%;
+    justify-content: center !important;
+}
+
+/* Deixa os headers alinhados e sem “pular” linha */
+.table-container table th.col-switch {
+    white-space: nowrap;
+    text-align: center;
+}
+
+.table-container table th.col-bidround {
+    text-align: center;
+    /* se quiser evitar quebra: */
+    /* white-space: nowrap; */
+}
+
+/* Opcional: padroniza altura/padding das últimas colunas */
+.table-container table td.col-switch,
+.table-container table td.col-bidround {
+    padding-top: 6px;
+    padding-bottom: 6px;
 }

@@ -11,6 +11,7 @@ import unicodedata
 
 from openpyxl import load_workbook
 
+
 class ImportErrorExcel(ValueError):
     """Erro de importação/validação do Excel (mensagem amigável)."""
 
@@ -29,7 +30,7 @@ class ImportResult:
 # (não vão mudar)
 # =========================================================
 # Empresa | Exercício | Trimestre | Campo/Bloco | Fase | Status | Versão |
-# Seção.Expurgo | Def.Projeto | Data Início | Bidround proposto | RIT
+# Seção.Expurgo | Def.Projeto | Data Início | Bidround proposto | Visão CORP | RIT
 
 # Mapeamento: header "humano" -> chave interna
 HEADER_MAP_OFFICIAL = {
@@ -44,6 +45,7 @@ HEADER_MAP_OFFICIAL = {
     "defprojeto": "defprojeto",
     "datainicio": "datainicio",
     "bidroundproposto": "bidround",
+    "visaocorp": "visao_corp",   
     "rit": "rit",
 }
 
@@ -59,6 +61,7 @@ REQUIRED_INTERNAL = [
     "defprojeto",
     "datainicio",
     "bidround",
+    "visao_corp",  
     "rit",
 ]
 
@@ -78,6 +81,7 @@ def _norm_header(s: Any) -> str:
       "Def.Projeto" -> "defprojeto"
       "Data Início" -> "datainicio"
       "Bidround proposto" -> "bidroundproposto"
+      "Visão CORP" -> "visaocorp"
       "RIT" -> "rit"
     """
     raw = str(s or "").strip().lower()
@@ -102,9 +106,9 @@ def _cell_to_str(v: Any) -> str:
 # =========================
 # Regras específicas
 # =========================
-def _parse_rit(v: Any) -> bool:
+def _parse_x_flag(v: Any, *, col_name: str) -> bool:
     """
-    Regra do projeto:
+    Regra do projeto (padrão boolean via Excel):
       - vazio -> False
       - "X" (case-insensitive) -> True
     """
@@ -113,7 +117,15 @@ def _parse_rit(v: Any) -> bool:
         return False
     if s == "X":
         return True
-    raise ImportErrorExcel("Coluna 'RIT' fora do padrão: use vazio (não) ou 'X' (sim).")
+    raise ImportErrorExcel(f"Coluna '{col_name}' fora do padrão: use vazio (não) ou 'X' (sim).")
+
+
+def _parse_rit(v: Any) -> bool:
+    return _parse_x_flag(v, col_name="RIT")
+
+
+def _parse_visao_corp(v: Any) -> bool:
+    return _parse_x_flag(v, col_name="Visão CORP")
 
 
 def _excel_date_to_ddmmaaaa(v: Any) -> str:
@@ -149,12 +161,16 @@ def _excel_date_to_ddmmaaaa(v: Any) -> str:
 
 def _is_row_empty(row_obj: Dict[str, Any]) -> bool:
     """
-    Linha “vazia” = todos campos vazios e rit False.
+    Linha “vazia” = todos campos vazios e flags False.
     """
+    # se qualquer flag estiver True, não é vazia
     if bool(row_obj.get("rit", False)):
         return False
+    if bool(row_obj.get("visao_corp", False)):
+        return False
+
     for k, v in row_obj.items():
-        if k == "rit":
+        if k in ("rit", "visao_corp"):
             continue
         if str(v or "").strip() != "":
             return False
@@ -246,6 +262,7 @@ def import_requests_from_excel(xlsx_path: str | Path, sheet_name: Optional[str] 
                 "defprojeto": _cell_to_str(get(row, "defprojeto")),
                 "datainicio": _excel_date_to_ddmmaaaa(get(row, "datainicio")),
                 "bidround": _cell_to_str(get(row, "bidround")),
+                "visao_corp": _parse_visao_corp(get(row, "visao_corp")), 
                 "rit": _parse_rit(get(row, "rit")),
             }
         except ImportErrorExcel as e:

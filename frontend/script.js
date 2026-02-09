@@ -1,9 +1,6 @@
 // frontend/script.js
 document.addEventListener('DOMContentLoaded', function () {
 
-    // =====================================================
-    // 1) WELCOME (robusto: tenta várias funções no backend)
-    // =====================================================
     async function getWelcomeProfileSafe() {
         // tenta get_welcome_user -> get_user_profile -> get_welcome_name
         try {
@@ -223,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
         tr.appendChild(tdDate);
 
         tr.appendChild(tdInput('text', `bidround_${i}`));
+        tr.appendChild(tdSwitch(`visao_corp_${i}`));
         tr.appendChild(tdSwitch(`rit_${i}`));
         tbody.appendChild(tr);
     }
@@ -466,11 +464,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         defprojeto: document.querySelector(`[name="defprojeto_${i}"]`).value.trim(),
                         datainicio: formattedDate,
                         bidround: document.querySelector(`[name="bidround_${i}"]`).value.trim(),
+                        visao_corp: document.querySelector(`[name="visao_corp_${i}"]`).checked,
                         rit: document.querySelector(`[name="rit_${i}"]`).checked
                     };
 
                     const hasValue = Object.entries(rowObj)
-                        .filter(([key]) => key !== "rit")
+                        .filter(([key]) => key !== "rit" && key !== "visao_corp")
                         .some(([, value]) => value !== "");
                     if (hasValue) data.push(rowObj);
                 }
