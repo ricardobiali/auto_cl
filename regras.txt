@@ -11,7 +11,7 @@ Sem alterar nada do que já está feito, quero criar novas regras para o funcion
 Rodar o requirements.txt:
 & .env\Scripts\python.exe -m pip install -r requirements.txt
 
-gerar o .exe:
+gerar o .exe via .spec:
 pyinstaller --noconfirm AUTO_CL.spec
 
 Execução via Dev:
